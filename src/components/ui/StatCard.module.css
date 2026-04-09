@@ -1,0 +1,60 @@
+.card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-medium);
+}
+
+.title {
+  /* Title specific override if needed */
+}
+
+.icon {
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.body {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+
+.value {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-primary);
+  font-weight: var(--font-semibold);
+}
+
+.trend {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-medium);
+}
+
+.trendUp { 
+  color: var(--color-pastel-green-strong); 
+}
+
+.trendDown { 
+  color: var(--color-pastel-pink-strong); 
+}
+
+.trendNeutral {
+  color: var(--color-text-tertiary);
+}

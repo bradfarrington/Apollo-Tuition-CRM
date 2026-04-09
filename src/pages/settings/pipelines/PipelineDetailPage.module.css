@@ -1,0 +1,164 @@
+.container {
+  padding: var(--spacing-8);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.backButton {
+  padding-left: var(--spacing-2);
+  padding-right: var(--spacing-2);
+}
+
+.title {
+  margin: 0 0 var(--spacing-1) 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.contentGrid {
+  display: grid;
+  gap: var(--spacing-6);
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--spacing-6);
+  max-width: 500px;
+}
+
+.selectWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.selectLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.select {
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.select:disabled {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+.checkboxWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.stagesCard {
+  margin-top: var(--spacing-6);
+}
+
+.stagesHelpText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 0;
+  margin-bottom: var(--spacing-4);
+}
+
+.stagesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.stageItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: box-shadow 0.2s ease;
+}
+
+.stageItem:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.dragHandle {
+  color: var(--color-text-tertiary);
+  cursor: grab;
+  font-size: var(--font-size-lg);
+  user-select: none;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.stageContent {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.stageNameInput {
+  margin-bottom: 0;
+  width: 200px;
+}
+
+.colorPickerWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.colorInput {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.colorInput::-webkit-color-swatch {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.stageActionRemove {
+  color: var(--color-error);
+}

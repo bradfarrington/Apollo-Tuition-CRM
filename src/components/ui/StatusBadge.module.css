@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.success {
+  background-color: var(--color-pastel-green);
+  color: var(--color-pastel-green-strong);
+  /* The "strong" from index.css might be a bit light for text on some screens 
+     We can override or use it. Let's use the strong variable, it's green-400 equivalent. 
+     Actually, let's use a darker text if it's too light. */
+  color: #166534; /* tailwind green-800 for contrast against light green bg */
+}
+
+.warning {
+  background-color: var(--color-pastel-purple);
+  color: #3730a3; /* tailwind indigo-800 for contrast */
+}
+
+.danger {
+  background-color: var(--color-pastel-pink);
+  color: #9f1239; /* tailwind rose-800 for contrast */
+}
+
+.default {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}

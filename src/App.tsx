@@ -1,121 +1,74 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AppLayout } from './components/layout/AppLayout';
+import { Dashboard } from './pages/Dashboard';
+import { LeadsListPage } from './pages/leads/LeadsListPage';
+import { LeadDetailPage } from './pages/leads/LeadDetailPage';
+import { ParentsListPage } from './pages/parents/ParentsListPage';
+import { ParentDetailPage } from './pages/parents/ParentDetailPage';
+import { StudentsListPage } from './pages/students/StudentsListPage';
+import { StudentDetailPage } from './pages/students/StudentDetailPage';
+import { TutorsListPage } from './pages/tutors/TutorsListPage';
+import { TutorDetailPage } from './pages/tutors/TutorDetailPage';
+import { 
+  PipelinesPage, 
+  ContractsPage, 
+  CommunicationsPage, 
+  PaymentsPage, 
+  TasksPage
+} from './pages/PagePlaceholders';
+import { SettingsLayout } from './components/layout/SettingsLayout';
+import { PipelinesListPage } from './pages/settings/pipelines/PipelinesListPage';
+import { PipelineDetailPage } from './pages/settings/pipelines/PipelineDetailPage';
+import { CustomFieldsListPage } from './pages/settings/custom-fields/CustomFieldsListPage';
+import { OnboardingSubmissionsPage } from './pages/onboarding/OnboardingSubmissionsPage';
+import { OnboardingReviewPage } from './pages/onboarding/OnboardingReviewPage';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="leads" element={<LeadsListPage />} />
+          <Route path="leads/:id" element={<LeadDetailPage />} />
+          
+          <Route path="parents" element={<ParentsListPage />} />
+          <Route path="parents/:id" element={<ParentDetailPage />} />
+          
+          <Route path="students" element={<StudentsListPage />} />
+          <Route path="students/:id" element={<StudentDetailPage />} />
+          
+          <Route path="tutors" element={<TutorsListPage />} />
+          <Route path="tutors/:id" element={<TutorDetailPage />} />
+          
+          <Route path="pipelines" element={<PipelinesPage />} />
+          <Route path="onboarding">
+            <Route index element={<OnboardingSubmissionsPage />} />
+            <Route path=":id" element={<OnboardingReviewPage />} />
+          </Route>
+          <Route path="contracts" element={<ContractsPage />} />
+          <Route path="communications" element={<CommunicationsPage />} />
+          <Route path="payments" element={<PaymentsPage />} />
+          <Route path="tasks" element={<TasksPage />} />
+          
+          <Route path="settings" element={<SettingsLayout />}>
+            <Route index element={<div style={{ padding: 'var(--spacing-8)' }}>Select a settings category</div>} />
+            <Route path="pipelines" element={<PipelinesListPage />} />
+            <Route path="pipelines/:id" element={<PipelineDetailPage />} />
+            <Route path="custom-fields" element={<CustomFieldsListPage />} />
+          </Route>
+          
+          {/* Fallback route */}
+          <Route path="*" element={
+            <div style={{ padding: 'var(--spacing-8)' }}>
+              <h1>404 Not Found</h1>
+              <p>The page you are looking for does not exist.</p>
+            </div>
+          } />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
