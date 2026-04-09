@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardHeader, CardContent } from '../../../components/ui/Card';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -6,28 +7,26 @@ import { Badge } from '../../../components/ui/Badge';
 import { CustomFieldForm } from './CustomFieldForm';
 import styles from './CustomFieldsListPage.module.css';
 
-const mockCustomFields = [
-  { id: '1', entity_type: 'lead', label: 'Dietary Requirements', api_key: 'dietary_requirements', field_type: 'textarea', is_required: false, is_active: true },
-  { id: '2', entity_type: 'student', label: 'Medical Conditions', api_key: 'medical_conditions', field_type: 'textarea', is_required: false, is_active: true },
-  { id: '3', entity_type: 'tutor', label: 'Subject Specialties', api_key: 'subject_specialties', field_type: 'multiselect', is_required: true, is_active: true },
-  { id: '4', entity_type: 'parent', label: 'Preferred Contact Time', api_key: 'preferred_contact_time', field_type: 'select', is_required: false, is_active: true }
-];
-
-const entityTypeLabels: Record<string, string> = {
-  lead: 'Lead',
-  parent: 'Parent',
-  student: 'Student',
-  tutor: 'Tutor',
-  enrolment: 'Enrolment'
-};
-
 export function CustomFieldsListPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedEntityFilter, setSelectedEntityFilter] = useState('all');
+  const [customFields, setCustomFields] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from('custom_fields').select('*').order('entity_type');
+      if (error) console.error('Failed to fetch custom fields:', error);
+      else setCustomFields(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <div style={{ padding: '20px' }}>Loading...</div>;
 
   const filteredFields = selectedEntityFilter === 'all' 
-    ? mockCustomFields 
-    : mockCustomFields.filter(f => f.entity_type === selectedEntityFilter);
+    ? customFields 
+    : customFields.filter(f => f.entity_type === selectedEntityFilter);
 
   return (
     <div className={styles.container}>
@@ -82,7 +81,7 @@ export function CustomFieldsListPage() {
                       <code className={styles.apiKey}>{field.api_key}</code>
                     </td>
                     <td>
-                      <Badge variant="neutral">{entityTypeLabels[field.entity_type] || field.entity_type}</Badge>
+                      <Badge variant="neutral">{(field.entity_type || '').charAt(0).toUpperCase() + (field.entity_type || '').slice(1)}</Badge>
                     </td>
                     <td>
                        {field.field_type}

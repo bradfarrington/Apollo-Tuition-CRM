@@ -1,0 +1,18 @@
+
+> apollo-tuition-crm@0.0.0 build
+> tsc -b && vite build
+
+src/pages/Dashboard.tsx(17,23): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(17,30): error TS7031: Binding element 'count' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(17,37): error TS7031: Binding element 'accentClass' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(17,56): error TS7031: Binding element 'Icon' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(41,21): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(41,28): error TS7031: Binding element 'relatedRecord' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(41,43): error TS7031: Binding element 'dueDate' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(41,52): error TS7031: Binding element 'isOverdue' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(55,31): error TS7031: Binding element 'Icon' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(55,37): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(55,44): error TS7031: Binding element 'description' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(55,57): error TS7031: Binding element 'time' implicitly has an 'any' type.
+src/pages/parents/ParentForm.tsx(165,70): error TS2322: Type 'boolean | "" | undefined' is not assignable to type 'boolean | undefined'.
+  Type '""' is not assignable to type 'boolean | undefined'.

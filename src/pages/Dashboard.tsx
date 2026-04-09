@@ -10,6 +10,8 @@ import {
   PhoneCall,
   CheckSquare
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import styles from './Dashboard.module.css';
 
 function ActionCard({ title, count, accentClass, icon: Icon }) {
@@ -67,6 +69,25 @@ function ActivityItem({ icon: Icon, title, description, time }) {
 }
 
 export function Dashboard() {
+  const [stats, setStats] = useState({ students: 0, tutors: 0, leads: 0, parents: 0 });
+
+  useEffect(() => {
+    (async () => {
+      const [studentsRes, tutorsRes, leadsRes, parentsRes] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('tutors').select('id', { count: 'exact', head: true }).eq('active_status', 'active'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+        supabase.from('parents').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      ]);
+      setStats({
+        students: studentsRes.count || 0,
+        tutors: tutorsRes.count || 0,
+        leads: leadsRes.count || 0,
+        parents: parentsRes.count || 0,
+      });
+    })();
+  }, []);
+
   return (
     <div className={styles.container}>
       
@@ -108,10 +129,10 @@ export function Dashboard() {
             <h2>Business Snapshot</h2>
           </div>
           <div className={styles.statsGrid}>
-            <StatCard title="Total Active Students" value="248" subtitle="↑ 12 this month" gradientClass={styles.statCardBlue} />
-            <StatCard title="Active Tutors" value="42" gradientClass={styles.statCardPurple} />
-            <StatCard title="This Week's Calls" value="18" subtitle="6 completed" gradientClass={styles.statCardPink} />
-            <StatCard title="Monthly Revenue" value="£42,500" subtitle="Projected £45,000" gradientClass={styles.statCardGreen} />
+          <StatCard title="Active Students" value={String(stats.students)} subtitle="" gradientClass={styles.statCardBlue} />
+            <StatCard title="Active Tutors" value={String(stats.tutors)} gradientClass={styles.statCardPurple} />
+            <StatCard title="Open Leads" value={String(stats.leads)} gradientClass={styles.statCardPink} />
+            <StatCard title="Active Parents" value={String(stats.parents)} gradientClass={styles.statCardGreen} />
           </div>
 
 

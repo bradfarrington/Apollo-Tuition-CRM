@@ -6,6 +6,7 @@ export interface Student {
   first_name: string;
   last_name: string;
   date_of_birth: string | null;
+  academic_cohort: number | null;
   school_year: string | null;
   key_stage: string | null;
   status: StudentStatus;
@@ -18,4 +19,6 @@ export interface Student {
   primary_parent_name?: string;
   assigned_tutor_name?: string;
   active_enrolments_count?: number;
+  subject_ids?: string[];
+  subjects?: { id: string; name: string; colour: string }[];
 }

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { supabase } from '../../lib/supabase';
 import type { Tutor } from '../../types/tutors';
 import styles from './TutorForm.module.css';
 
@@ -13,6 +15,7 @@ interface TutorFormProps {
 
 export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
   const isEditing = !!tutor;
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Partial<Tutor>>({
     first_name: '',
     last_name: '',
@@ -51,10 +54,37 @@ export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submitting tutor:', formData);
-    onClose();
+    setIsSubmitting(true);
+    
+    // Clean data for DB
+    const submitData = { ...formData };
+    delete submitData.id;
+    delete submitData.created_at;
+    delete submitData.updated_at;
+
+    try {
+      if (tutor?.id) {
+        // Update
+        const { error } = await supabase
+          .from('tutors')
+          .update({ ...submitData, updated_at: new Date().toISOString() })
+          .eq('id', tutor.id);
+        if (error) throw error;
+      } else {
+        // Insert
+        const { error } = await supabase
+          .from('tutors')
+          .insert(submitData);
+        if (error) throw error;
+      }
+      onClose();
+    } catch (err) {
+      console.error('Failed to save tutor:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -145,30 +175,28 @@ export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
             <div className={styles.row}>
               <div>
                 <label className={styles.label}>Active Status</label>
-                <select 
-                  className={styles.select}
+                <Select 
                   value={formData.active_status || 'onboarding'}
-                  onChange={(e) => handleChange('active_status', e.target.value as any)}
-                  style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="onboarding">Onboarding</option>
-                </select>
+                  onChange={(val) => handleChange('active_status', val as any)}
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'onboarding', label: 'Onboarding' }
+                  ]}
+                />
               </div>
               <div>
                 <label className={styles.label}>Contract Status</label>
-                <select 
-                  className={styles.select}
+                <Select 
                   value={formData.contract_status || 'pending'}
-                  onChange={(e) => handleChange('contract_status', e.target.value as any)}
-                  style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="signed">Signed</option>
-                  <option value="expired">Expired</option>
-                  <option value="terminated">Terminated</option>
-                </select>
+                  onChange={(val) => handleChange('contract_status', val as any)}
+                  options={[
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'signed', label: 'Signed' },
+                    { value: 'expired', label: 'Expired' },
+                    { value: 'terminated', label: 'Terminated' }
+                  ]}
+                />
               </div>
             </div>
           </div>
@@ -178,28 +206,19 @@ export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
             <div>
               <label className={styles.label}>Notes</label>
               <textarea 
+                className={styles.textareaInput}
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows={4}
-                style={{ 
-                  width: '100%', 
-                  padding: 'var(--spacing-sm)', 
-                  borderRadius: 'var(--radius-sm)', 
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--surface-primary)',
-                  color: 'var(--text-primary)',
-                  fontFamily: 'inherit',
-                  resize: 'vertical'
-                }}
               />
             </div>
           </div>
         </form>
 
         <div className={styles.footer}>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" type="submit" form="tutor-form">
-            {isEditing ? 'Save Changes' : 'Create Tutor'}
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="primary" type="submit" form="tutor-form" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Tutor'}
           </Button>
         </div>
       </div>

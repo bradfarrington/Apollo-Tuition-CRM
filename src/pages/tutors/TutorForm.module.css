@@ -1,12 +1,13 @@
+/* =============================================
+   Student Form — Slide-over Panel
+   ============================================= */
+
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(2px);
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   justify-content: flex-end;
 }
@@ -14,9 +15,9 @@
 .panel {
   width: 100%;
   max-width: 500px;
-  background-color: var(--surface-primary);
+  background-color: var(--color-bg-surface);
   height: 100%;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -35,23 +36,24 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 1px solid var(--border-color);
+  padding: var(--spacing-6) var(--spacing-6);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-surface);
 }
 
 .title {
   margin: 0;
   font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .closeBtn {
   background: none;
   border: none;
-  color: var(--text-tertiary);
+  color: var(--color-text-tertiary);
   cursor: pointer;
-  padding: var(--spacing-xs);
+  padding: var(--spacing-2);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -60,22 +62,23 @@
 }
 
 .closeBtn:hover {
-  background-color: var(--bg-modifier-hover);
-  color: var(--text-primary);
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-primary);
 }
 
 .form {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-6);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-5);
+  background-color: var(--color-bg-surface);
 }
 
 .row {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-4);
 }
 
 .row > * {
@@ -83,33 +86,122 @@
 }
 
 .fieldGroup {
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--border-color);
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-5);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .groupTitle {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--spacing-4) 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .footer {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-top: 1px solid var(--border-color);
+  padding: var(--spacing-5) var(--spacing-6);
+  border-top: 1px solid var(--color-border-subtle);
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-md);
-  background-color: var(--surface-primary);
+  gap: var(--spacing-3);
+  background-color: var(--color-bg-subtle);
 }
 
 .label {
   display: block;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-2);
   font-size: var(--font-size-sm);
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Select Inputs ---- */
+.selectInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px rgba(138, 148, 255, 0.15);
+}
+
+/* ---- Textarea ---- */
+.textareaInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  min-height: 100px;
+  resize: vertical;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.textareaInput:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px rgba(138, 148, 255, 0.15);
+}
+
+/* ---- Subject Pills ---- */
+.subjectPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.subjectPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-border-subtle);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.subjectPill:hover {
+  border-color: var(--color-text-tertiary);
+  background-color: var(--color-bg-subtle);
+}
+
+.subjectPillSelected {
+  font-weight: 600;
+}
+
+.checkMark {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.subjectHint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-style: italic;
 }

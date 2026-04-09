@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { Select } from '../../../components/ui/Select';
 import styles from './CustomFieldForm.module.css';
 
 interface CustomFieldFormProps {
@@ -49,13 +50,16 @@ export function CustomFieldForm({ onClose }: CustomFieldFormProps) {
         <main className={styles.content}>
           <div className={styles.formGroup}>
             <label className={styles.label}>Entity Type</label>
-            <select className={styles.select}>
-              <option value="lead">Lead</option>
-              <option value="parent">Parent</option>
-              <option value="student">Student</option>
-              <option value="tutor">Tutor</option>
-              <option value="enrolment">Enrolment</option>
-            </select>
+            <Select 
+              defaultValue="lead"
+              options={[
+                { value: 'lead', label: 'Lead' },
+                { value: 'parent', label: 'Parent' },
+                { value: 'student', label: 'Student' },
+                { value: 'tutor', label: 'Tutor' },
+                { value: 'enrolment', label: 'Enrolment' }
+              ]}
+            />
           </div>
 
           <div className={styles.formGroup}>
@@ -81,15 +85,19 @@ export function CustomFieldForm({ onClose }: CustomFieldFormProps) {
 
           <div className={styles.formGroup}>
             <label className={styles.label}>Field Type</label>
-            <select className={styles.select} value={fieldType} onChange={(e) => setFieldType(e.target.value)}>
-              <option value="text">Text (Short)</option>
-              <option value="textarea">Textarea (Long)</option>
-              <option value="number">Number</option>
-              <option value="date">Date</option>
-              <option value="select">Dropdown Select</option>
-              <option value="multiselect">Multi-Select</option>
-              <option value="checkbox">Checkbox (Boolean)</option>
-            </select>
+            <Select 
+              value={fieldType} 
+              onChange={setFieldType}
+              options={[
+                { value: 'text', label: 'Text (Short)' },
+                { value: 'textarea', label: 'Textarea (Long)' },
+                { value: 'number', label: 'Number' },
+                { value: 'date', label: 'Date' },
+                { value: 'select', label: 'Dropdown Select' },
+                { value: 'multiselect', label: 'Multi-Select' },
+                { value: 'checkbox', label: 'Checkbox (Boolean)' }
+              ]}
+            />
           </div>
 
           {(fieldType === 'select' || fieldType === 'multiselect') && (

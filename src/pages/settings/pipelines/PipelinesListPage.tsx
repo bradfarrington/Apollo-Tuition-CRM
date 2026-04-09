@@ -1,47 +1,25 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardHeader, CardContent } from '../../../components/ui/Card';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Badge } from '../../../components/ui/Badge';
 import styles from './PipelinesListPage.module.css';
 
-// Mock data replacing API call
-const mockPipelines = [
-  {
-    id: '1',
-    name: 'Standard Lead Flow',
-    entity_type: 'lead',
-    is_default: true,
-    is_active: true,
-    sort_order: 0,
-  },
-  {
-    id: '2',
-    name: 'Tutor Onboarding (UK)',
-    entity_type: 'tutor_onboarding',
-    is_default: true,
-    is_active: true,
-    sort_order: 1,
-  },
-  {
-    id: '3',
-    name: 'Archived Lead Flow',
-    entity_type: 'lead',
-    is_default: false,
-    is_active: false,
-    sort_order: 2,
-  }
-];
-
-const entityTypeLabels: Record<string, string> = {
-  lead: 'Leads',
-  student_onboarding: 'Student Onboarding',
-  tutor_onboarding: 'Tutor Onboarding',
-  other: 'Other'
-};
-
 export function PipelinesListPage() {
   const navigate = useNavigate();
+  const [pipelines, setPipelines] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from('pipelines').select('*').order('sort_order');
+      if (error) console.error('Failed to fetch pipelines:', error);
+      else setPipelines(data || []);
+      setLoading(false);
+    })();
+  }, []);
 
   return (
     <div className={styles.container}>
@@ -70,13 +48,15 @@ export function PipelinesListPage() {
                 </tr>
               </thead>
               <tbody>
-                {mockPipelines.map(pipeline => (
+                {loading ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--color-text-tertiary)' }}>Loading...</td></tr>
+                ) : pipelines.map(pipeline => (
                   <tr key={pipeline.id}>
                     <td>
                       <div className={styles.pipelineName}>{pipeline.name}</div>
                     </td>
                     <td>
-                      <Badge variant="neutral">{entityTypeLabels[pipeline.entity_type] || pipeline.entity_type}</Badge>
+                      <Badge variant="neutral">{pipeline.entity_type || '-'}</Badge>
                     </td>
                     <td>
                       <StatusBadge 

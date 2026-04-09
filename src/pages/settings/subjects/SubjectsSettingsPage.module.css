@@ -1,0 +1,183 @@
+.container {
+  padding: var(--spacing-8);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-8);
+}
+
+.title {
+  margin: 0 0 var(--spacing-2) 0;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: var(--spacing-4) var(--spacing-6);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table th {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-subtle);
+}
+
+.table td {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.table tbody tr:hover {
+  background-color: var(--color-bg-subtle);
+}
+
+.subjectName {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.colourSwatch {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.actionsCell {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteBtn:hover {
+  color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.emptyCell {
+  text-align: center !important;
+  color: var(--color-text-secondary) !important;
+  padding: var(--spacing-8) !important;
+}
+
+/* Confirm Delete Overlay */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirmDialog {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-8);
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.confirmTitle {
+  margin: 0 0 var(--spacing-2) 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.confirmText {
+  margin: 0 0 var(--spacing-6) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.confirmActions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: center;
+}
+
+.confirmDeleteBtn {
+  padding: var(--spacing-2) var(--spacing-5);
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  background-color: #ef4444;
+  color: white;
+  transition: background-color var(--transition-fast);
+}
+
+.confirmDeleteBtn:hover {
+  background-color: #dc2626;
+}

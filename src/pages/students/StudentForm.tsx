@@ -1,9 +1,14 @@
 import { X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { DatePicker } from '../../components/ui/DatePicker';
 import styles from './StudentForm.module.css';
 import { useEffect, useState } from 'react';
 import type { Student } from '../../types/students';
+import { useSubjects } from '../../contexts/SubjectsContext';
+import { supabase } from '../../lib/supabase';
+import { getAcademicDetailsFromCohort, calculateCohortFromYearGroup, getKeyStageForYearGroup } from '../../utils/academicYear';
 
 interface StudentFormProps {
   isOpen: boolean;
@@ -12,16 +17,127 @@ interface StudentFormProps {
 }
 
 export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) {
+  const { activeSubjects } = useSubjects();
   const [isVisible, setIsVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>(
+    initialData?.subject_ids || []
+  );
+
+  // Dynamic academic fields
+  const [schoolYear, setSchoolYear] = useState<string>('');
+  const [keyStage, setKeyStage] = useState<string>('');
+
+  // Dynamic parent/tutor options from DB
+  const [parentOptions, setParentOptions] = useState<{ value: string; label: string }[]>([]);
+  const [tutorOptions, setTutorOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
+      setSelectedSubjectIds(initialData?.subject_ids || []);
+
+      if (initialData?.academic_cohort) {
+         const { yearGroup, keyStage: ks } = getAcademicDetailsFromCohort(initialData.academic_cohort);
+         setSchoolYear(yearGroup !== 'Unknown' && yearGroup !== 'Graduated' ? yearGroup : '');
+         setKeyStage(ks !== 'N/A' ? ks : '');
+      } else {
+         setSchoolYear(initialData?.school_year || '');
+         setKeyStage(initialData?.key_stage || '');
+      }
+
+      // Fetch parents and tutors for dropdowns
+      supabase.from('parents').select('id, first_name, last_name').order('first_name').then(({ data }) => {
+        setParentOptions((data || []).map(p => ({ value: p.id, label: `${p.first_name} ${p.last_name}` })));
+      });
+      supabase.from('tutors').select('id, first_name, last_name').order('first_name').then(({ data }) => {
+        setTutorOptions((data || []).map(t => ({ value: t.id, label: `${t.first_name} ${t.last_name}` })));
+      });
     } else {
       const timer = setTimeout(() => setIsVisible(false), 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
+
+  const toggleSubject = (id: string) => {
+    setSelectedSubjectIds(prev =>
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
+  };
+
+  const handleSave = async () => {
+    // Read form values from DOM (uncontrolled inputs)
+    const getValue = (id: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+      return el?.value || '';
+    };
+
+    const firstName = getValue('first_name').trim();
+    const lastName = getValue('last_name').trim();
+    if (!firstName || !lastName) return;
+
+    const year = schoolYear || null;
+    const ks = keyStage || null;
+    const cohort = calculateCohortFromYearGroup(year);
+
+    const studentData = {
+      first_name: firstName,
+      last_name: lastName,
+      date_of_birth: getValue('date_of_birth') || null,
+      status: (getValue('status') as Student['status']) || 'active',
+      school_year: year,
+      key_stage: ks,
+      academic_cohort: cohort,
+      primary_parent_id: getValue('primary_parent_id') || null,
+      tutor_id: getValue('tutor_id') || null,
+    };
+
+    setSaving(true);
+
+    try {
+      let studentId = initialData?.id;
+
+      if (initialData) {
+        // Update existing student
+        const { error } = await supabase
+          .from('students')
+          .update({ ...studentData, updated_at: new Date().toISOString() })
+          .eq('id', initialData.id);
+        if (error) throw error;
+      } else {
+        // Insert new student
+        const { data: newStudent, error } = await supabase
+          .from('students')
+          .insert(studentData)
+          .select('id')
+          .single();
+        if (error) throw error;
+        studentId = newStudent.id;
+      }
+
+      // Sync student_subjects junction table
+      if (studentId) {
+        // Delete existing subject links
+        await supabase.from('student_subjects').delete().eq('student_id', studentId);
+
+        // Insert new subject links
+        if (selectedSubjectIds.length > 0) {
+          const links = selectedSubjectIds.map(subjectId => ({
+            student_id: studentId!,
+            subject_id: subjectId,
+          }));
+          const { error: linkError } = await supabase.from('student_subjects').insert(links);
+          if (linkError) console.error('Failed to sync subjects:', linkError);
+        }
+      }
+
+      onClose();
+    } catch (err) {
+      console.error('Failed to save student:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!isVisible) return null;
 
@@ -50,106 +166,119 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
           <div className={styles.row}>
             <div>
               <label htmlFor="date_of_birth" className={styles.label}>Date of Birth</label>
-              <Input id="date_of_birth" type="date" defaultValue={initialData?.date_of_birth || ''} />
+              <DatePicker 
+                id="date_of_birth" 
+                defaultValue={initialData?.date_of_birth || ''} 
+              />
             </div>
             <div>
               <label htmlFor="status" className={styles.label}>Status *</label>
-              <select 
+              <Select 
                 id="status"
-                className="ui-input" 
                 defaultValue={initialData?.status || 'active'}
-                style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="onboarding">Onboarding</option>
-                <option value="graduated">Graduated</option>
-                <option value="paused">Paused</option>
-              </select>
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                  { value: 'onboarding', label: 'Onboarding' },
+                  { value: 'graduated', label: 'Graduated' },
+                  { value: 'paused', label: 'Paused' }
+                ]}
+              />
             </div>
           </div>
 
           <div className={styles.row}>
             <div>
               <label htmlFor="school_year" className={styles.label}>School Year</label>
-              <select 
+              <Select 
                 id="school_year" 
-                className="ui-input" 
-                defaultValue={initialData?.school_year || ''}
-                style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-              >
-                <option value="">Select Year...</option>
-                <option value="Year 4">Year 4</option>
-                <option value="Year 5">Year 5</option>
-                <option value="Year 6">Year 6 (11+)</option>
-                <option value="Year 7">Year 7</option>
-                <option value="Year 8">Year 8</option>
-                <option value="Year 9">Year 9</option>
-                <option value="Year 10">Year 10 (GCSE)</option>
-                <option value="Year 11">Year 11 (GCSE)</option>
-                <option value="Year 12">Year 12 (A-Level)</option>
-                <option value="Year 13">Year 13 (A-Level)</option>
-              </select>
+                value={schoolYear}
+                onChange={(val) => {
+                  setSchoolYear(val);
+                  setKeyStage(getKeyStageForYearGroup(val));
+                }}
+                placeholder="Select Year..."
+                options={[
+                  { value: 'Year 4', label: 'Year 4' },
+                  { value: 'Year 5', label: 'Year 5' },
+                  { value: 'Year 6', label: 'Year 6 (11+)' },
+                  { value: 'Year 7', label: 'Year 7' },
+                  { value: 'Year 8', label: 'Year 8' },
+                  { value: 'Year 9', label: 'Year 9' },
+                  { value: 'Year 10', label: 'Year 10 (GCSE)' },
+                  { value: 'Year 11', label: 'Year 11 (GCSE)' },
+                  { value: 'Year 12', label: 'Year 12 (A-Level)' },
+                  { value: 'Year 13', label: 'Year 13 (A-Level)' }
+                ]}
+              />
             </div>
             <div>
               <label htmlFor="key_stage" className={styles.label}>Key Stage</label>
-              <select 
+              <Select 
                 id="key_stage" 
-                className="ui-input" 
-                defaultValue={initialData?.key_stage || ''}
-                style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-              >
-                <option value="">Select KS...</option>
-                <option value="KS2">KS2</option>
-                <option value="KS3">KS3</option>
-                <option value="KS4">KS4</option>
-                <option value="KS5">KS5</option>
-              </select>
+                value={keyStage}
+                onChange={setKeyStage}
+                placeholder="Select KS..."
+                options={[
+                  { value: 'KS2', label: 'KS2' },
+                  { value: 'KS3', label: 'KS3' },
+                  { value: 'KS4', label: 'KS4' },
+                  { value: 'KS5', label: 'KS5' }
+                ]}
+              />
             </div>
+          </div>
+
+          {/* Subjects Multi-Select */}
+          <div className={styles.fieldGroup}>
+            <h3 className={styles.groupTitle}>Subjects</h3>
+            <div className={styles.subjectPills}>
+              {activeSubjects.map((subject) => {
+                const isSelected = selectedSubjectIds.includes(subject.id);
+                return (
+                  <button
+                    key={subject.id}
+                    type="button"
+                    className={`${styles.subjectPill} ${isSelected ? styles.subjectPillSelected : ''}`}
+                    style={{
+                      backgroundColor: isSelected ? subject.colour + '22' : undefined,
+                      borderColor: isSelected ? subject.colour : undefined,
+                      color: isSelected ? subject.colour : undefined,
+                    }}
+                    onClick={() => toggleSubject(subject.id)}
+                  >
+                    {isSelected && <span className={styles.checkMark}>✓</span>}
+                    {subject.name}
+                  </button>
+                );
+              })}
+            </div>
+            {activeSubjects.length === 0 && (
+              <p className={styles.subjectHint}>
+                No subjects configured. Add them in Settings → Subjects Offered.
+              </p>
+            )}
           </div>
 
           <div className={styles.fieldGroup}>
             <h3 className={styles.groupTitle}>Relationships</h3>
-            <div style={{ marginBottom: 'var(--spacing-md)' }}>
+            <div style={{ marginBottom: 'var(--spacing-4)' }}>
               <label htmlFor="primary_parent_id" className={styles.label}>Primary Parent / Guardian</label>
-              {/* This would be a searchable Select in real implementation */}
-              <select 
+              <Select 
                 id="primary_parent_id" 
-                className="ui-input" 
                 defaultValue={initialData?.primary_parent_id || ''}
-                style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-              >
-                <option value="">Select Parent...</option>
-                <option value="1">Sarah Connor</option>
-                <option value="2">Kyle Reese</option>
-              </select>
+                placeholder="Select Parent..."
+                options={parentOptions}
+              />
             </div>
             
             <div>
               <label htmlFor="tutor_id" className={styles.label}>Assigned Tutor</label>
-              <select 
+              <Select 
                 id="tutor_id" 
-                className="ui-input" 
                 defaultValue={initialData?.tutor_id || ''}
-                style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-              >
-                <option value="">Select Tutor...</option>
-                <option value="1">John Smith</option>
-                <option value="2">Alice Johnson</option>
-              </select>
-            </div>
-          </div>
-
-          <div className={styles.fieldGroup}>
-            <h3 className={styles.groupTitle}>Additional Information</h3>
-            <div>
-              <label htmlFor="notes" className={styles.label}>Notes</label>
-              <textarea 
-                id="notes" 
-                className="ui-input" 
-                placeholder="Medical info, learning requirements..."
-                defaultValue={initialData?.notes || ''}
-                style={{ width: '100%', padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', minHeight: '100px', resize: 'vertical', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'inherit' }}
+                placeholder="Select Tutor..."
+                options={tutorOptions}
               />
             </div>
           </div>
@@ -158,8 +287,8 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
 
         <div className={styles.footer}>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={onClose}>
-            {initialData ? 'Save Changes' : 'Create Student'}
+          <Button variant="primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : initialData ? 'Save Changes' : 'Create Student'}
           </Button>
         </div>
       </div>

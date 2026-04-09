@@ -1,30 +1,35 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardHeader, CardContent } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { StageBadge } from '../../../components/ui/StageBadge';
 import styles from './PipelineDetailPage.module.css';
 
-const mockPipeline = {
-  id: '1',
-  name: 'Standard Lead Flow',
-  entity_type: 'lead',
-  is_default: true,
-  is_active: true,
-};
-
-const mockStages = [
-  { id: '1', name: 'New Enquiry', color: '#E0F2FE', sort_order: 0, is_active: true },
-  { id: '2', name: 'Contacted', color: '#FEF3C7', sort_order: 1, is_active: true },
-  { id: '3', name: 'Assessment Booked', color: '#D1FAE5', sort_order: 2, is_active: true },
-  { id: '4', name: 'Lost', color: '#FEE2E2', sort_order: 3, is_active: true }
-];
-
 export function PipelineDetailPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [pipeline, setPipeline] = useState<any>(null);
+  const [stages, setStages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [stages, setStages] = useState(mockStages);
+  useEffect(() => {
+    (async () => {
+      if (!id) return;
+      const [pRes, sRes] = await Promise.all([
+        supabase.from('pipelines').select('*').eq('id', id).single(),
+        supabase.from('pipeline_stages').select('*').eq('pipeline_id', id).order('sort_order'),
+      ]);
+      if (pRes.error) console.error('Failed to fetch pipeline:', pRes.error);
+      else setPipeline(pRes.data);
+      if (sRes.error) console.error('Failed to fetch stages:', sRes.error);
+      else setStages(sRes.data || []);
+      setLoading(false);
+    })();
+  }, [id]);
+
+  if (loading || !pipeline) return <div style={{ padding: '20px' }}>Loading...</div>;
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.setData('sourceIndex', index.toString());
@@ -51,7 +56,7 @@ export function PipelineDetailPage() {
             ← Back
           </Button>
           <div>
-            <h1 className={styles.title}>Edit Pipeline: {mockPipeline.name}</h1>
+            <h1 className={styles.title}>Edit Pipeline: {pipeline?.name || 'Loading...'}</h1>
             <p className={styles.subtitle}>Configure pipeline details and manage stages</p>
           </div>
         </div>
@@ -64,10 +69,10 @@ export function PipelineDetailPage() {
             <CardHeader title="Pipeline Details" />
             <CardContent>
               <div className={styles.formGrid}>
-                <Input label="Pipeline Name" defaultValue={mockPipeline.name} fullWidth />
+                <Input label="Pipeline Name" defaultValue={pipeline?.name || ''} fullWidth />
                 <div className={styles.selectWrapper}>
                    <label className={styles.selectLabel}>Entity Type</label>
-                   <select className={styles.select} defaultValue={mockPipeline.entity_type} disabled>
+                   <select className={styles.select} defaultValue={pipeline?.entity_type || 'lead'} disabled>
                      <option value="lead">Leads</option>
                      <option value="student_onboarding">Student Onboarding</option>
                      <option value="tutor_onboarding">Tutor Onboarding</option>
@@ -75,11 +80,11 @@ export function PipelineDetailPage() {
                    </select>
                 </div>
                 <div className={styles.checkboxWrapper}>
-                  <input type="checkbox" id="is_default" defaultChecked={mockPipeline.is_default} />
+                  <input type="checkbox" id="is_default" defaultChecked={pipeline?.is_default} />
                   <label htmlFor="is_default">Default Pipeline for this Entity</label>
                 </div>
                  <div className={styles.checkboxWrapper}>
-                  <input type="checkbox" id="is_active" defaultChecked={mockPipeline.is_active} />
+                  <input type="checkbox" id="is_active" defaultChecked={pipeline?.is_active} />
                   <label htmlFor="is_active">Active Status</label>
                 </div>
               </div>

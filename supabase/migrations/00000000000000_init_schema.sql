@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS public.students (
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     date_of_birth DATE,
+    academic_cohort INT,
     school_year TEXT,
     key_stage TEXT,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'onboarding', 'graduated', 'paused')),

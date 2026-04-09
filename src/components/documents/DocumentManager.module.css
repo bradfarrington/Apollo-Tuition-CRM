@@ -1,0 +1,437 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  width: 100%;
+}
+
+/* Loading State */
+.loadingState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: var(--color-brand-primary);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Upload Dropzone */
+.dropzone {
+  border: 2px dashed var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-8, 32px) var(--spacing-6, 24px);
+  text-align: center;
+  background-color: var(--color-surface, #ffffff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.dropzone:hover {
+  border-color: var(--color-brand-primary);
+  background-color: var(--color-pastel-purple);
+}
+
+.dragActive {
+  border-color: var(--color-brand-primary);
+  background-color: var(--color-pastel-purple);
+  transform: scale(1.01);
+}
+
+.dropzoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  pointer-events: none; /* Let the parent handle clicks */
+}
+
+.uploadIconWrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-brand-primary);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-2);
+}
+
+.dropzoneTitle {
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.dropzoneText {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-tertiary, #64748b);
+  margin: 0;
+}
+
+/* Error Banner */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: #fee2e2;
+  color: #ef4444;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  position: relative;
+}
+
+.errorClose {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.errorClose:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Document List */
+.documentList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.listTitle {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.listCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0 6px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8) 0;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+}
+
+.emptyIcon {
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-3);
+  opacity: 0.5;
+}
+
+.emptyText {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Grid & Cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.docCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.docCard:hover {
+  border-color: var(--color-brand-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.docIconArea {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-surface-hover);
+}
+
+.iconImage { color: #8b5cf6; } /* Purple */
+.iconPdf { color: #ef4444; }   /* Red */
+.iconGeneric { color: #3b82f6; } /* Blue */
+
+.docInfo {
+  flex-grow: 1;
+  min-width: 0; /* for truncation */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.docName {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+/* Rename Inline Form */
+.renameForm {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.renameInput {
+  flex-grow: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--color-brand-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  outline: none;
+}
+
+.renameSaveBtn, .renameCancelBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.renameSaveBtn { color: #10b981; }
+.renameSaveBtn:hover { background-color: rgba(16, 185, 129, 0.1); }
+
+.renameCancelBtn { color: var(--color-text-tertiary); }
+.renameCancelBtn:hover { background-color: var(--color-surface-hover); color: var(--color-text-secondary); }
+
+/* Document Actions */
+.docActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0; /* Hide initially */
+  transition: opacity 0.2s ease;
+}
+
+.docCard:hover .docActions {
+  opacity: 1; /* Show on hover */
+}
+
+/* Make actions always visible on touch devices */
+@media (hover: none) {
+  .docActions { opacity: 1; }
+}
+
+.actionBtn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-brand-primary);
+}
+
+.actionBtn.danger:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+/* Delete Modal OVERLAY */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.deleteDialog {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.deleteTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.deleteText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-6) 0;
+}
+
+.deleteActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+}
+
+.deleteConfirmBtn {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  padding: 0 var(--spacing-4);
+  height: 36px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+
+.deleteConfirmBtn:hover {
+  background-color: #dc2626;
+}
+
+/* Drag Modal */
+.dragDialog {
+  background-color: var(--color-surface, #ffffff);
+  border-radius: var(--radius-xl, 16px);
+  padding: var(--spacing-6, 24px);
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.dragDialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.dragDialogTitle {
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.dragDialogClose {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary, #64748b);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.dragDialogClose:hover {
+  background-color: var(--color-surface-hover, #f1f5f9);
+  color: var(--color-text-primary, #0f172a);
+}

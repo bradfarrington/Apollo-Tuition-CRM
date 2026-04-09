@@ -1,270 +1,673 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card } from '../../components/ui/Card';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { 
+  Edit2, Plus, Trash2, Mail, GraduationCap, 
+  FileText, MoreVertical, Calendar,
+  ChevronRight, User, Pencil,
+  CheckCircle2, Briefcase, X, MessageSquare
+} from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { 
-  ArrowLeft, Edit, MoreVertical, Mail, Phone, ExternalLink, 
-  GraduationCap, Calendar, FileText, CheckSquare, MessageSquare, Clock 
-} from 'lucide-react';
-import { useState } from 'react';
-import { StudentForm } from './StudentForm';
-import styles from './StudentDetailPage.module.css';
 import type { Student } from '../../types/students';
+import { StudentForm } from './StudentForm';
+import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { useSubjects } from '../../contexts/SubjectsContext';
+import { getAcademicDetailsFromCohort } from '../../utils/academicYear';
+import { DocumentManager } from '../../components/documents/DocumentManager';
+import styles from './StudentDetailPage.module.css';
 
-// Mock data matching the schema
-const mockStudent: Student = {
-  id: '1',
-  primary_parent_id: '1',
-  first_name: 'John',
-  last_name: 'Connor',
-  date_of_birth: '2012-05-14',
-  school_year: 'Year 9',
-  key_stage: 'KS3',
-  status: 'active',
-  tutor_id: '1',
-  notes: 'Needs help with Math and Sciences. Very engaged.',
-  created_at: '2026-04-09T10:00:00Z',
-  updated_at: '2026-04-09T10:00:00Z'
-};
+// Note type for the student's educational notes
+interface StudentNote {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export function StudentDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'enrolments' | 'documents' | 'communications'>('enrolments');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { subjects } = useSubjects();
+  const [student, setStudent] = useState<Student | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ---- Fetch Student from Supabase ----
+  const fetchStudent = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('students')
+      .select('*, parents(first_name, last_name), tutors(first_name, last_name), student_subjects(subject_id)')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Failed to fetch student:', error);
+      setLoading(false);
+      return;
+    }
+
+    setStudent({
+      ...data,
+      primary_parent_name: data.parents ? `${data.parents.first_name} ${data.parents.last_name}` : undefined,
+      assigned_tutor_name: data.tutors ? `${data.tutors.first_name} ${data.tutors.last_name}` : undefined,
+      subject_ids: (data.student_subjects || []).map((ss: any) => ss.subject_id),
+    });
+    setLoading(false);
+  }, [id]);
+
+  useEffect(() => {
+    fetchStudent();
+  }, [fetchStudent]);
+
+  // ---- Notes from Supabase ----
+  const [notes, setNotes] = useState<StudentNote[]>([]);
+  const [noteModal, setNoteModal] = useState<{ isOpen: boolean; editingNote?: StudentNote }>({
+    isOpen: false,
+  });
+  const [noteFormTitle, setNoteFormTitle] = useState('');
+  const [noteFormContent, setNoteFormContent] = useState('');
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+
+  const fetchNotes = useCallback(async () => {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from('student_notes')
+      .select('*')
+      .eq('student_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to fetch notes:', error);
+      return;
+    }
+    setNotes(data || []);
+  }, [id]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
+
+  const openAddNote = () => {
+    setNoteFormTitle('');
+    setNoteFormContent('');
+    setNoteModal({ isOpen: true });
+  };
+
+  const openEditNote = (note: StudentNote) => {
+    setNoteFormTitle(note.title);
+    setNoteFormContent(note.content);
+    setNoteModal({ isOpen: true, editingNote: note });
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteFormTitle.trim() && !noteFormContent.trim()) return;
+    if (noteModal.editingNote) {
+      const { error } = await supabase
+        .from('student_notes')
+        .update({ title: noteFormTitle.trim(), content: noteFormContent.trim(), updated_at: new Date().toISOString() })
+        .eq('id', noteModal.editingNote.id);
+      if (error) console.error('Failed to update note:', error);
+    } else {
+      const { error } = await supabase
+        .from('student_notes')
+        .insert({ student_id: id, title: noteFormTitle.trim() || 'Untitled Note', content: noteFormContent.trim() });
+      if (error) console.error('Failed to add note:', error);
+    }
+    setNoteModal({ isOpen: false });
+    fetchNotes();
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    const { error } = await supabase.from('student_notes').delete().eq('id', noteId);
+    if (error) console.error('Failed to delete note:', error);
+    setDeletingNoteId(null);
+    fetchNotes();
+  };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    fetchStudent(); // Refetch student data after edit
+  };
+
+  if (loading || !student) {
+    return (
+      <div className={styles.container} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', color: 'var(--color-text-tertiary)' }}>
+        {loading ? 'Loading student...' : 'Student not found.'}
+      </div>
+    );
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!id) return;
+    const { error } = await supabase.from('students').delete().eq('id', id);
+    if (error) {
+      console.error('Failed to delete student:', error);
+      alert('Failed to delete student.');
+    } else {
+      navigate('/students');
+    }
+  };
+
+  // Resolve student's subjects from context
+  const studentSubjects = (student.subject_ids || []).map(sid => subjects.find(s => s.id === sid)).filter(Boolean);
+
+  const initials = `${student.first_name.charAt(0)}${student.last_name.charAt(0)}`;
+
+  const academicInfo = student.academic_cohort 
+    ? getAcademicDetailsFromCohort(student.academic_cohort) 
+    : { yearGroup: student.school_year || 'Unknown Year', keyStage: student.key_stage || 'Unknown Key Stage' };
 
   return (
     <div className={styles.container}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.backBtn} onClick={() => navigate('/students')}>
-            <ArrowLeft size={20} />
-          </button>
-          <div className={styles.titleWrapper}>
-            <h1 className={styles.title}>
-              {mockStudent.first_name} {mockStudent.last_name}
-              <Badge variant={mockStudent.status === 'active' ? 'success' : 'neutral'}>
-                {mockStudent.status.charAt(0).toUpperCase() + mockStudent.status.slice(1)}
-              </Badge>
-            </h1>
-            <div className={styles.headerMeta}>
-              <span className={styles.metaItem}>
-                <GraduationCap size={14} /> {mockStudent.school_year || 'N/A'} ({mockStudent.key_stage || 'N/A'})
-              </span>
-              {mockStudent.date_of_birth && (
-                <span className={styles.metaItem}>
-                  <Calendar size={14} /> DOB: {new Date(mockStudent.date_of_birth).toLocaleDateString()}
-                </span>
-              )}
+
+      {/* Breadcrumb */}
+      <nav className={styles.breadcrumb}>
+        <Link to="/students">Students</Link>
+        <ChevronRight size={14} className={styles.breadcrumbSeparator} />
+        <span className={styles.breadcrumbCurrent}>{student.first_name} {student.last_name}</span>
+      </nav>
+
+      {/* Split Layout */}
+      <div className={styles.splitLayout}>
+
+        {/* ========== LEFT PROFILE PANEL ========== */}
+        <aside className={styles.profilePanel}>
+          <div className={styles.profileBanner}>
+            <div className={styles.profileBannerAccent} />
+          </div>
+
+          <div className={styles.profileIdentity}>
+            <div className={styles.avatar}>{initials}</div>
+            <h1 className={styles.profileName}>{student.first_name} {student.last_name}</h1>
+            <div className={styles.profileSubtitle}>
+              <span className={`${styles.statusDot} ${styles[student.status] || styles.inactive}`} />
+              {student.status.charAt(0).toUpperCase() + student.status.slice(1)} Student
+            </div>
+
+            {/* Quick Action Icon Buttons */}
+            <div className={styles.quickActionIcons}>
+              <button className={styles.iconBtn} data-tooltip="Email Parent">
+                <Mail size={16} />
+              </button>
+              <button className={`${styles.iconBtn} ${styles.primary}`} data-tooltip="Enrol">
+                <Plus size={16} />
+              </button>
+              <button className={styles.iconBtn} data-tooltip="More">
+                <MoreVertical size={16} />
+              </button>
             </div>
           </div>
-        </div>
-        <div className={styles.headerActions}>
-          <Button variant="secondary" onClick={() => setIsFormOpen(true)}>
-            <Edit size={16} /> Edit
-          </Button>
-          <button className={styles.iconBtn}>
-            <MoreVertical size={16} />
-          </button>
-        </div>
-      </header>
 
-      {/* Main Layout */}
-      <div className={styles.layout}>
-        {/* Left Column - Details */}
-        <div className={styles.mainColumn}>
-          
-          {/* General Info Card */}
-          <Card>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Overview</h2>
-            </div>
-            <div className={styles.infoGrid}>
-              <div className={styles.infoGroup}>
-                <span className={styles.infoLabel}>Internal ID</span>
-                <span className={styles.infoValue}>STU-{id || mockStudent.id.substring(0, 4)}</span>
-              </div>
-              <div className={styles.infoGroup}>
-                <span className={styles.infoLabel}>Added</span>
-                <span className={styles.infoValue}>
-                  {new Date(mockStudent.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+          <div className={styles.panelDivider} />
+
+          {/* Academic Info */}
+          <div className={styles.contactFields}>
+            <div className={styles.contactFieldsLabel}>Academic Profile</div>
             
-            {mockStudent.notes && (
-              <div style={{ marginTop: 'var(--spacing-lg)' }}>
-                <span className={styles.infoLabel} style={{ display: 'block', marginBottom: 'var(--spacing-xs)' }}>Notes</span>
-                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', whiteSpace: 'pre-wrap' }}>
-                  {mockStudent.notes}
-                </p>
+            <div className={styles.contactField}>
+              <div className={styles.contactFieldIcon}><GraduationCap size={14} /></div>
+              <div className={styles.contactFieldText}>
+                <span>{academicInfo.yearGroup}</span>
+                <span className={styles.contactFieldHint}>Academic Year</span>
+              </div>
+            </div>
+
+            <div className={styles.contactField}>
+              <div className={styles.contactFieldIcon}><BookOpen size={14} /></div>
+              <div className={styles.contactFieldText}>
+                <span>{academicInfo.keyStage}</span>
+                <span className={styles.contactFieldHint}>Key Stage</span>
+              </div>
+            </div>
+
+            {/* Subjects */}
+            {studentSubjects.length > 0 && (
+              <div className={styles.contactField} style={{ alignItems: 'flex-start' }}>
+                <div className={styles.contactFieldIcon}><BookOpen size={14} /></div>
+                <div className={styles.contactFieldText}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                    {studentSubjects.map((s) => (
+                      <span
+                        key={s!.id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          backgroundColor: s!.colour + '22',
+                          color: s!.colour,
+                        }}
+                      >
+                        {s!.name}
+                      </span>
+                    ))}
+                  </div>
+                  <span className={styles.contactFieldHint}>Subjects</span>
+                </div>
               </div>
             )}
-          </Card>
+          </div>
 
-          {/* Links Section */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-xl)' }}>
+          <div className={styles.panelDivider} />
+
+          {/* Metadata */}
+          <div className={styles.metadataSection}>
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Date of Birth</span>
+              <span className={styles.metaValue}>
+                {student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-GB') : '-'}
+              </span>
+            </div>
+
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Date Added</span>
+              <span className={styles.metaValue}>
+                {new Date(student.created_at).toLocaleDateString('en-GB')}
+              </span>
+            </div>
+
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Status</span>
+              <span className={styles.metaValue}>
+                <Badge variant={student.status === 'active' ? 'success' : student.status === 'inactive' ? 'error' : 'warning'}>
+                  {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                </Badge>
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.panelDivider} />
+
+          {/* Core Relationships */}
+          <div className={styles.metadataSection} style={{ paddingTop: 'var(--spacing-4)' }}>
+            <div className={styles.contactFieldsLabel} style={{ marginBottom: '0' }}>Core Relationships</div>
             
-            {/* Parent Link */}
-            <Card>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Primary Guardian</h2>
-              </div>
-              <div className={styles.linkedCard} onClick={() => navigate(`/parents/${mockStudent.primary_parent_id}`)} style={{ cursor: 'pointer' }}>
-                <div className={styles.linkedAvatar}>SC</div>
-                <div className={styles.linkedInfo}>
-                  <div className={styles.linkedName}>Sarah Connor</div>
-                  <div className={styles.linkedMeta}>
-                    <span className={styles.linkedMetaItem}><Mail size={12} /> sarah@example.com</span>
-                    <span className={styles.linkedMetaItem}><Phone size={12} /> 07123456789</span>
+             <Link to={`/parents/${student.primary_parent_id}`} style={{ textDecoration: 'none' }}>
+                <div className={styles.contactField} style={{ margin: 0 }}>
+                    <div className={styles.contactFieldIcon} style={{ background: 'var(--color-pastel-purple)', color: 'var(--color-pastel-purple-strong)' }}><User size={14} /></div>
+                    <div className={styles.contactFieldText}>
+                        <span style={{ color: 'var(--color-text-primary)' }}>{student.primary_parent_name || 'Parent'}</span>
+                        <span className={styles.contactFieldHint}>Primary Guardian</span>
+                    </div>
+                    <ChevronRight size={14} style={{ color: 'var(--color-text-tertiary)' }} />
+                </div>
+            </Link>
+
+            {student.tutor_id && (
+                <Link to={`/tutors/${student.tutor_id}`} style={{ textDecoration: 'none' }}>
+                    <div className={styles.contactField} style={{ margin: 0 }}>
+                        <div className={styles.contactFieldIcon} style={{ background: 'var(--color-pastel-blue)', color: 'var(--color-pastel-blue-strong)' }}><Briefcase size={14} /></div>
+                        <div className={styles.contactFieldText}>
+                            <span style={{ color: 'var(--color-text-primary)' }}>{student.assigned_tutor_name || 'Tutor'}</span>
+                            <span className={styles.contactFieldHint}>Assigned Tutor</span>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--color-text-tertiary)' }} />
+                    </div>
+                </Link>
+            )}
+          </div>
+        </aside>
+
+        {/* ========== RIGHT CONTENT PANEL ========== */}
+        <div className={styles.contentPanel}>
+
+          {/* Header */}
+          <div className={styles.panelHeader}>
+            <h2 className={styles.panelTitle}>{student.first_name}'s Profile</h2>
+            <div className={styles.panelActions}>
+              <Button variant="secondary" onClick={() => setIsFormOpen(true)}>
+                <Edit2 size={15} />
+                Edit
+              </Button>
+              <Button variant="secondary" onClick={() => setIsDeleteDialogOpen(true)} style={{ color: '#ef4444' }}>
+                <Trash2 size={15} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Tabs Bar */}
+          <div className={styles.tabsBar}>
+            <button 
+              className={`${styles.tab} ${activeTab === 'enrolments' ? styles.active : ''}`}
+              onClick={() => setActiveTab('enrolments')}
+            >
+              <GraduationCap size={15} />
+              Enrolments
+              <span className={styles.tabCount}>2</span>
+            </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'documents' ? styles.active : ''}`}
+              onClick={() => setActiveTab('documents')}
+            >
+              <FileText size={15} />
+              Documents
+              <span className={styles.tabCount}>0</span>
+            </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'communications' ? styles.active : ''}`}
+              onClick={() => setActiveTab('communications')}
+            >
+              <MessageSquare size={15} />
+              Activity Stream
+            </button>
+          </div>
+
+          {/* Tab Content Card */}
+          <div className={styles.tabCard}>
+            {activeTab === 'enrolments' && (
+              <>
+                <div className={styles.tabCardHeader}>
+                  <h3 className={styles.tabCardTitle}>
+                    Active Enrolments
+                    <span className={styles.tabCount}>2</span>
+                  </h3>
+                  <div className={styles.tabCardActions}>
+                    <button className={styles.filterBtn}><Plus size={13} /> Add</button>
                   </div>
                 </div>
-                <button className={styles.linkedAction}><ExternalLink size={16} /></button>
-              </div>
-            </Card>
-
-            {/* Tutor Link */}
-            <Card>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Assigned Tutor</h2>
-              </div>
-              {mockStudent.tutor_id ? (
-                <div className={styles.linkedCard}>
-                  <div className={styles.linkedAvatar} style={{ backgroundColor: '#e0f2fe', color: '#0369a1' }}>DS</div>
-                  <div className={styles.linkedInfo}>
-                    <div className={styles.linkedName}>Dr. Silberman</div>
-                    <div className={styles.linkedMeta}>
-                      <span className={styles.linkedMetaItem}>Maths & Science</span>
-                      <span className={styles.linkedMetaItem}><Mail size={12} /> silberman@tutors.com</span>
+                <div className={styles.tabCardBody}>
+                  <div className={styles.linkedItem}>
+                    <div className={styles.linkedItemLeft}>
+                      <div className={`${styles.linkedItemAvatar} ${styles.student}`}>
+                        <GraduationCap size={18} />
+                      </div>
+                      <div className={styles.linkedItemContent}>
+                        <span className={styles.linkedItemTitle}>Mathematics (KS3)</span>
+                        <span className={styles.linkedItemMeta}>Weekly on Tuesdays 17:00</span>
+                      </div>
+                    </div>
+                    <div className={styles.linkedItemRight}>
+                      <Badge variant="success">Active</Badge>
+                    </div>
+                  </div>
+                  <div className={styles.linkedItem}>
+                    <div className={styles.linkedItemLeft}>
+                      <div className={`${styles.linkedItemAvatar} ${styles.student}`}>
+                        <GraduationCap size={18} />
+                      </div>
+                      <div className={styles.linkedItemContent}>
+                        <span className={styles.linkedItemTitle}>Science (KS3)</span>
+                        <span className={styles.linkedItemMeta}>Weekly on Thursdays 18:00</span>
+                      </div>
+                    </div>
+                    <div className={styles.linkedItemRight}>
+                      <Badge variant="success">Active</Badge>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-sm)', fontStyle: 'italic' }}>
-                  No tutor assigned
+              </>
+            )}
+
+            {activeTab === 'documents' && (
+              <div style={{ padding: 'var(--spacing-6)' }}>
+                <DocumentManager entityType="student" entityId={student.id} />
+              </div>
+            )}
+
+            {activeTab === 'communications' && (
+              <div className={styles.emptyState}>
+                <div className={styles.emptyStateIcon}>
+                  <MessageSquare size={24} />
                 </div>
-              )}
-            </Card>
+                <p className={styles.emptyStateText}>No activity recorded</p>
+              </div>
+            )}
           </div>
 
-          {/* Enrolments */}
-          <Card>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Active Enrolments</h2>
-              <Button variant="secondary" size="sm">Add Enrolment</Button>
-            </div>
-            
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Subject</th>
-                  <th>Frequency</th>
-                  <th>Schedule</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Mathematics (KS3)</td>
-                  <td>Weekly</td>
-                  <td>Tuesdays 17:00</td>
-                  <td><Badge variant="success">Active</Badge></td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Science (KS3)</td>
-                  <td>Weekly</td>
-                  <td>Thursdays 18:00</td>
-                  <td><Badge variant="success">Active</Badge></td>
-                </tr>
-              </tbody>
-            </table>
-          </Card>
-          
-          {/* Contracts/Documents placeholder */}
-          <Card>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Documents</h2>
-              <Button variant="secondary" size="sm">Upload</Button>
-            </div>
-            <div style={{ padding: 'var(--spacing-md)', textAlign: 'center', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-              <FileText size={24} style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--spacing-xs)' }} />
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}>No documents uploaded yet.</p>
-            </div>
-          </Card>
-        </div>
+          {/* Bottom Grid: Detailed Info + Tasks */}
+          <div className={styles.bottomGrid}>
 
-        {/* Right Column - Sidebar */}
-        <div className={styles.sideColumn}>
-          
-          {/* Tasks */}
-          <Card noPadding>
-            <div style={{ padding: 'var(--spacing-lg)', borderBottom: '1px solid var(--border-color)' }}>
-              <div className={styles.sectionHeader} style={{ marginBottom: 0 }}>
-                <h2 className={styles.sectionTitle} style={{ fontSize: 'var(--font-size-md)' }}>Tasks</h2>
-                <button className={styles.iconBtn} style={{ padding: 'var(--spacing-xs)' }}><CheckSquare size={14} /></button>
-              </div>
-            </div>
-            <div className={styles.taskList} style={{ padding: '0 var(--spacing-lg)' }}>
-              <div className={styles.taskItem}>
-                <input type="checkbox" style={{ accentColor: 'var(--brand-primary)', width: '16px', height: '16px' }} />
-                <div className={styles.taskContent}>
-                  <div className={styles.taskTitle}>Send term progress report</div>
-                  <div className={styles.taskMeta}>Due tomorrow • Assigned to Admin</div>
+            {/* Detailed Information (Jewellery CRM style) */}
+            <div className={`${styles.sectionCard} ${styles.sectionCardPurple}`}>
+              <div className={styles.sectionCardHeader}>
+                <h3 className={styles.sectionCardTitle}>
+                  <span className={styles.sectionCardTitleIcon}><User size={14} /></span>
+                  Detailed Information
+                </h3>
+                <div className={styles.sectionCardActions}>
+                  <button className={styles.sortBtn} onClick={() => setIsFormOpen(true)}><Edit2 size={13} /> Edit</button>
                 </div>
               </div>
-              <div className={styles.taskItem}>
-                <input type="checkbox" style={{ accentColor: 'var(--brand-primary)', width: '16px', height: '16px' }} />
-                <div className={styles.taskContent}>
-                  <div className={styles.taskTitle}>Check Math homework completion</div>
-                  <div className={styles.taskMeta}><span className={styles.taskMetaWarning}>Overdue</span> • Assigned to Tutor</div>
+              <div className={styles.sectionCardBody}>
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldRowIcon}><User size={14} /></div>
+                  <div className={styles.fieldRowContent}>
+                    <div className={styles.fieldRowLabel}>First Name</div>
+                    <div className={styles.fieldRowValue}>{student.first_name}</div>
+                  </div>
+                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
+                </div>
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldRowIcon}><User size={14} /></div>
+                  <div className={styles.fieldRowContent}>
+                    <div className={styles.fieldRowLabel}>Last Name</div>
+                    <div className={styles.fieldRowValue}>{student.last_name}</div>
+                  </div>
+                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
+                </div>
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldRowIcon}><Calendar size={14} /></div>
+                  <div className={styles.fieldRowContent}>
+                    <div className={styles.fieldRowLabel}>Date of Birth</div>
+                    <div className={styles.fieldRowValue}>{student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-GB') : '-'}</div>
+                  </div>
+                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
+                </div>
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldRowIcon}><GraduationCap size={14} /></div>
+                  <div className={styles.fieldRowContent}>
+                    <div className={styles.fieldRowLabel}>School Year</div>
+                    <div className={styles.fieldRowValue}>{academicInfo.yearGroup}</div>
+                  </div>
+                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
+                </div>
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldRowIcon}><BookOpen size={14} /></div>
+                  <div className={styles.fieldRowContent}>
+                    <div className={styles.fieldRowLabel}>Key Stage</div>
+                    <div className={styles.fieldRowValue}>{academicInfo.keyStage}</div>
+                  </div>
+                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
                 </div>
               </div>
             </div>
-          </Card>
 
-          {/* Communication Timeline */}
-          <Card>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle} style={{ fontSize: 'var(--font-size-md)' }}>Recent Activity</h2>
-              <button className={styles.iconBtn} style={{ padding: 'var(--spacing-xs)' }}><MessageSquare size={14} /></button>
-            </div>
-            
-            <div className={styles.timeline}>
-              <div className={styles.timelineItem}>
-                <div className={styles.timelineIcon}><Mail size={14} /></div>
-                <div className={styles.timelineContent}>
-                  <div className={styles.timelineHeader}>
-                    <span className={styles.timelineTitle}>Term overview sent to Parent</span>
-                    <span className={styles.timelineDate}>Today, 10:30 AM</span>
-                  </div>
-                  <div className={styles.timelineBody}>
-                    Automated email sent to Sarah Connor containing KS3 Mathematics syllabus overview.
-                  </div>
-                </div>
-              </div>
-              <div className={styles.timelineItem}>
-                <div className={styles.timelineIcon}><Clock size={14} /></div>
-                <div className={styles.timelineContent}>
-                  <div className={styles.timelineHeader}>
-                    <span className={styles.timelineTitle}>Lesson Completed</span>
-                    <span className={styles.timelineDate}>Yesterday, 18:00</span>
-                  </div>
-                  <div className={styles.timelineBody}>
-                    Mathematics (KS3) lesson with Dr. Silberman marked as completed.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
+            {/* Tasks & Notes Column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
 
+              {/* Educational Notes — Multi-note with CRUD */}
+              <div className={`${styles.sectionCard} ${styles.sectionCardPink}`}>
+                <div className={styles.sectionCardHeader}>
+                  <h3 className={styles.sectionCardTitle}>
+                    <span className={styles.sectionCardTitleIcon}><FileText size={14} /></span>
+                    Educational Notes
+                    <span className={styles.tabCount}>{notes.length}</span>
+                  </h3>
+                  <Button variant="secondary" size="sm" onClick={openAddNote}>
+                    <Plus size={14} />
+                    Add Note
+                  </Button>
+                </div>
+                <div className={styles.sectionCardBody} style={{ padding: 0 }}>
+                  {notes.length === 0 ? (
+                    <div className={styles.notesEmpty}>
+                      <FileText size={24} />
+                      <p>No notes yet</p>
+                      <span>Click "Add Note" to create one.</span>
+                    </div>
+                  ) : (
+                    notes.map((note) => (
+                      <div key={note.id} className={styles.noteItem}>
+                        <div className={styles.noteItemHeader}>
+                          <h4 className={styles.noteItemTitle}>{note.title}</h4>
+                          <div className={styles.noteItemActions}>
+                            <button
+                              className={styles.noteActionBtn}
+                              onClick={() => openEditNote(note)}
+                              title="Edit note"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              className={`${styles.noteActionBtn} ${styles.noteActionBtnDanger}`}
+                              onClick={() => setDeletingNoteId(note.id)}
+                              title="Delete note"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                        <p className={styles.noteItemContent}>{note.content}</p>
+                        <span className={styles.noteItemTimestamp}>
+                          {new Date(note.updated_at).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                          })}
+                          {note.updated_at !== note.created_at && ' (edited)'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Tasks */}
+              <div className={`${styles.sectionCard} ${styles.sectionCardGreen}`}>
+                <div className={styles.sectionCardHeader}>
+                  <h3 className={styles.sectionCardTitle}>
+                    <span className={styles.sectionCardTitleIcon}><CheckCircle2 size={14} /></span>
+                    Tasks
+                  </h3>
+                  <Button variant="secondary" size="sm">
+                    <Plus size={14} />
+                    Add
+                  </Button>
+                </div>
+                <div className={styles.sectionCardBody}>
+                  <div className={styles.taskItem}>
+                    <input type="checkbox" className={styles.taskCheckbox} />
+                    <div className={styles.taskInfo}>
+                      <span className={styles.taskTitle}>Send term progress report</span>
+                      <span className={styles.taskMeta}>Due tomorrow</span>
+                    </div>
+                  </div>
+                  <div className={styles.taskItem}>
+                    <input type="checkbox" className={styles.taskCheckbox} />
+                    <div className={styles.taskInfo}>
+                      <span className={styles.taskTitle}>Check Math homework</span>
+                      <span className={styles.taskMeta} style={{ color: '#ef4444' }}>Overdue</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <StudentForm 
         isOpen={isFormOpen} 
-        onClose={() => setIsFormOpen(false)} 
-        initialData={mockStudent}
+        onClose={handleFormClose} 
+        initialData={student}
+      />
+
+      {/* ---- Note Add/Edit Modal ---- */}
+      {noteModal.isOpen && (
+        <div className={styles.noteModalOverlay} onClick={() => setNoteModal({ isOpen: false })}>
+          <div className={styles.noteModalPanel} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.noteModalHeader}>
+              <h3 className={styles.noteModalTitle}>
+                {noteModal.editingNote ? 'Edit Note' : 'Add Note'}
+              </h3>
+              <button className={styles.noteModalClose} onClick={() => setNoteModal({ isOpen: false })}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className={styles.noteModalBody}>
+              <div className={styles.noteModalField}>
+                <label className={styles.noteModalLabel}>Title</label>
+                <input
+                  type="text"
+                  className={styles.noteModalInput}
+                  placeholder="E.g. Learning Requirements"
+                  value={noteFormTitle}
+                  onChange={(e) => setNoteFormTitle(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className={styles.noteModalField}>
+                <label className={styles.noteModalLabel}>Content</label>
+                <textarea
+                  className={styles.noteModalTextarea}
+                  placeholder="Write your note here..."
+                  value={noteFormContent}
+                  onChange={(e) => setNoteFormContent(e.target.value)}
+                  rows={5}
+                />
+              </div>
+            </div>
+            <div className={styles.noteModalFooter}>
+              <Button variant="secondary" onClick={() => setNoteModal({ isOpen: false })}>Cancel</Button>
+              <Button variant="primary" onClick={handleSaveNote} disabled={!noteFormTitle.trim() && !noteFormContent.trim()}>
+                {noteModal.editingNote ? 'Save Changes' : 'Add Note'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Note Delete Confirmation ---- */}
+      {deletingNoteId && (
+        <div className={styles.noteModalOverlay} onClick={() => setDeletingNoteId(null)}>
+          <div className={styles.noteDeleteDialog} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.noteDeleteTitle}>Delete Note</h3>
+            <p className={styles.noteDeleteText}>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </p>
+            <div className={styles.noteDeleteActions}>
+              <Button variant="secondary" onClick={() => setDeletingNoteId(null)}>Cancel</Button>
+              <button className={styles.noteDeleteConfirmBtn} onClick={() => handleDeleteNote(deletingNoteId)}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <ConfirmDeleteModal
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Student"
+        message="Are you sure you want to delete this student? This action cannot be undone and will remove all associated data."
       />
     </div>
   );
+}
+
+// Needed for custom icon usage locally
+function BookOpen(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  )
 }

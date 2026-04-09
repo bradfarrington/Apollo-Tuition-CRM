@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { X } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import styles from './ParentForm.module.css';
 
 interface ParentFormProps {
@@ -10,110 +12,157 @@ interface ParentFormProps {
   parentId?: string; // If provided, we're in edit mode
 }
 
-export function ParentForm({ isOpen, onClose }: ParentFormProps) {
+export function ParentForm({ isOpen, onClose, parentId }: ParentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [parentData, setParentData] = useState<any>(null);
+
+  useEffect(() => {
+    if (isOpen && parentId) {
+      supabase.from('parents').select('*').eq('id', parentId).single().then(({ data }) => setParentData(data));
+    } else {
+      setParentData(null);
+    }
+  }, [isOpen, parentId]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onClose();
-    }, 800);
+    
+    const form = e.target as HTMLFormElement;
+    const data = {
+      first_name: (form.elements.namedItem('first_name') as HTMLInputElement).value,
+      last_name: (form.elements.namedItem('last_name') as HTMLInputElement).value,
+      email: (form.elements.namedItem('email') as HTMLInputElement).value,
+      phone: (form.elements.namedItem('phone') as HTMLInputElement).value || null,
+      preferred_contact_method: (form.elements.namedItem('preferred_contact_method') as HTMLSelectElement).value,
+      address_line_1: (form.elements.namedItem('address_line_1') as HTMLInputElement).value || null,
+      city: (form.elements.namedItem('city') as HTMLInputElement).value || null,
+      postal_code: (form.elements.namedItem('postal_code') as HTMLInputElement).value || null,
+      notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value || null,
+      status: (form.elements.namedItem('status') as HTMLSelectElement).value,
+    };
+
+    if (parentId) {
+      const { error } = await supabase.from('parents').update({ ...data, updated_at: new Date().toISOString() }).eq('id', parentId);
+      if (error) console.error('Error updating parent:', error);
+    } else {
+      const { error } = await supabase.from('parents').insert(data);
+      if (error) console.error('Error inserting parent:', error);
+    }
+
+    setIsSubmitting(false);
+    onClose();
   };
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.slideover}>
+      <div className={styles.panel}>
         <div className={styles.header}>
-          <h2 className={styles.title}>Add New Parent / Guardian</h2>
-          <button className={styles.closeButton} onClick={onClose}>
+          <h2 className={styles.title}>{parentId ? 'Edit Parent / Guardian' : 'Add New Parent / Guardian'}</h2>
+          <button className={styles.closeBtn} onClick={onClose} type="button">
             <X size={20} />
           </button>
         </div>
 
-        <div className={styles.content}>
-          <form id="parent-form" onSubmit={handleSubmit} className={styles.section}>
+        {parentId && !parentData ? (
+           <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
+        ) : (
+          <form id="parent-form" onSubmit={handleSubmit} className={styles.form}>
             
-            <h3 className={styles.sectionTitle}>Personal Details</h3>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>First Name *</label>
-                <Input placeholder="e.g. Sarah" required />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Last Name *</label>
-                <Input placeholder="e.g. Connor" required />
+            <div className={styles.fieldGroup}>
+              <h3 className={styles.groupTitle}>Personal Details</h3>
+              <div className={styles.row}>
+                <div>
+                  <label className={styles.label}>First Name *</label>
+                  <Input name="first_name" defaultValue={parentData?.first_name} placeholder="e.g. Sarah" required />
+                </div>
+                <div>
+                  <label className={styles.label}>Last Name *</label>
+                  <Input name="last_name" defaultValue={parentData?.last_name} placeholder="e.g. Connor" required />
+                </div>
               </div>
             </div>
 
-            <h3 className={styles.sectionTitle}>Contact Information</h3>
-            <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Email Address *</label>
-                <Input type="email" placeholder="sarah@example.com" required />
+            <div className={styles.fieldGroup}>
+              <h3 className={styles.groupTitle}>Contact Information</h3>
+              <div className={styles.row}>
+                <div>
+                  <label className={styles.label}>Email Address *</label>
+                  <Input name="email" type="email" defaultValue={parentData?.email} placeholder="sarah@example.com" required />
+                </div>
+                <div>
+                  <label className={styles.label}>Phone Number</label>
+                  <Input name="phone" type="tel" defaultValue={parentData?.phone} placeholder="07123 456789" />
+                </div>
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Phone Number</label>
-                <Input type="tel" placeholder="07123 456789" />
-              </div>
-              <div className={styles.formGroup}>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
                 <label className={styles.label}>Preferred Contact Method</label>
-                <select className={styles.select}>
-                  <option value="email">Email</option>
-                  <option value="phone">Phone</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="sms">SMS</option>
-                </select>
+                <Select 
+                    id="preferred_contact_method"
+                    defaultValue={parentData?.preferred_contact_method || 'email'}
+                    options={[
+                      { value: 'email', label: 'Email' },
+                      { value: 'phone', label: 'Phone' },
+                      { value: 'whatsapp', label: 'WhatsApp' },
+                      { value: 'sms', label: 'SMS' }
+                  ]}
+                />
               </div>
             </div>
 
-            <h3 className={styles.sectionTitle}>Address</h3>
-            <div className={styles.formGrid}>
-              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <div className={styles.fieldGroup}>
+              <h3 className={styles.groupTitle}>Address</h3>
+              <div>
                 <label className={styles.label}>Address Line 1</label>
-                <Input placeholder="123 Street Name" />
+                <Input name="address_line_1" defaultValue={parentData?.address_line_1} placeholder="123 Street Name" />
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>City</label>
-                <Input placeholder="London" />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Postal Code</label>
-                <Input placeholder="SW1A 1AA" />
+              <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                <div>
+                  <label className={styles.label}>City</label>
+                  <Input name="city" defaultValue={parentData?.city} placeholder="London" />
+                </div>
+                <div>
+                  <label className={styles.label}>Postal Code</label>
+                  <Input name="postal_code" defaultValue={parentData?.postal_code} placeholder="SW1A 1AA" />
+                </div>
               </div>
             </div>
 
-            <h3 className={styles.sectionTitle}>Additional Info</h3>
-            <div className={styles.formGrid}>
-              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <div className={styles.fieldGroup}>
+              <h3 className={styles.groupTitle}>Additional Info</h3>
+              <div>
                 <label className={styles.label}>Notes</label>
                 <textarea 
-                  className={styles.textarea} 
+                  name="notes"
+                  className={styles.textareaInput} 
+                  defaultValue={parentData?.notes}
                   placeholder="Any additional information..."
                 ></textarea>
               </div>
-              <div className={styles.formGroup}>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
                 <label className={styles.label}>Status</label>
-                <select className={styles.select} defaultValue="active">
-                  <option value="prospective">Prospective</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                  <Select 
+                    id="status"
+                    defaultValue={parentData?.status || 'active'}
+                    options={[
+                      { value: 'prospective', label: 'Prospective' },
+                      { value: 'active', label: 'Active' },
+                      { value: 'inactive', label: 'Inactive' }
+                  ]}
+                />
               </div>
             </div>
 
           </form>
-        </div>
+        )}
 
         <div className={styles.footer}>
           <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="parent-form" disabled={isSubmitting}>
+          <Button variant="primary" type="submit" form="parent-form" disabled={isSubmitting || (parentId && !parentData)}>
             {isSubmitting ? 'Saving...' : 'Save Parent'}
           </Button>
         </div>

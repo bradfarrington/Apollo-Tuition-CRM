@@ -1,24 +1,26 @@
+/* =============================================
+   Student Form — Slide-over Panel
+   ============================================= */
+
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--overlay-bg, rgba(0, 0, 0, 0.5));
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
 }
 
-.slideover {
+.panel {
   width: 100%;
   max-width: 500px;
-  background-color: var(--bg-color);
+  background-color: var(--color-bg-surface);
   height: 100%;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideIn {
@@ -31,108 +33,175 @@
 }
 
 .header {
-  padding: var(--spacing-4) var(--spacing-6);
-  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: var(--spacing-6) var(--spacing-6);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-surface);
 }
 
 .title {
   margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
-.closeButton {
+.closeBtn {
   background: none;
   border: none;
-  color: var(--color-foreground-muted);
+  color: var(--color-text-tertiary);
   cursor: pointer;
-  padding: var(--spacing-1);
+  padding: var(--spacing-2);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
 }
 
-.closeButton:hover {
-  color: var(--color-foreground);
-  background-color: var(--bg-color-muted);
+.closeBtn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-primary);
 }
 
-.content {
-  padding: var(--spacing-6);
-  overflow-y: auto;
+.form {
   flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-6);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6);
+  gap: var(--spacing-5);
+  background-color: var(--color-bg-surface);
 }
 
-.section {
+.row {
   display: flex;
-  flex-direction: column;
   gap: var(--spacing-4);
 }
 
-.sectionTitle {
-  font-size: var(--font-size-md);
+.row > * {
+  flex: 1;
+}
+
+.fieldGroup {
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-5);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.groupTitle {
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  color: var(--color-foreground);
-  margin: 0 0 var(--spacing-2) 0;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: var(--spacing-2);
-}
-
-.formGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-4);
-}
-
-.fullWidth {
-  grid-column: 1 / -1;
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--spacing-4) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .footer {
-  padding: var(--spacing-4) var(--spacing-6);
-  border-top: 1px solid var(--border-color);
+  padding: var(--spacing-5) var(--spacing-6);
+  border-top: 1px solid var(--color-border-subtle);
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-3);
-  background-color: var(--card-bg);
-}
-
-.formGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
+  background-color: var(--color-bg-subtle);
 }
 
 .label {
+  display: block;
+  margin-bottom: var(--spacing-2);
   font-size: var(--font-size-sm);
   font-weight: 500;
-  color: var(--color-foreground);
+  color: var(--color-text-secondary);
 }
 
-.select, .textarea {
+/* ---- Select Inputs ---- */
+.selectInput {
   width: 100%;
-  padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--input-border);
+  padding: 10px 12px;
   border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
   font-size: var(--font-size-sm);
-  background-color: var(--input-bg);
-  color: var(--color-foreground);
+  font-family: inherit;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.textarea {
+.selectInput:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px rgba(138, 148, 255, 0.15);
+}
+
+/* ---- Textarea ---- */
+.textareaInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
   min-height: 100px;
   resize: vertical;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.select:focus, .textarea:focus {
+.textareaInput:focus {
   outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 1px var(--accent-color);
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px rgba(138, 148, 255, 0.15);
+}
+
+/* ---- Subject Pills ---- */
+.subjectPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.subjectPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-border-subtle);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.subjectPill:hover {
+  border-color: var(--color-text-tertiary);
+  background-color: var(--color-bg-subtle);
+}
+
+.subjectPillSelected {
+  font-weight: 600;
+}
+
+.checkMark {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.subjectHint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-style: italic;
 }
