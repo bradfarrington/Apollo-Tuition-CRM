@@ -6,6 +6,7 @@ export interface Tutor {
   phone?: string | null;
   address_line_1?: string | null;
   city?: string | null;
+  county?: string | null;
   postal_code?: string | null;
   country?: string | null;
   active_status: 'active' | 'inactive' | 'onboarding';

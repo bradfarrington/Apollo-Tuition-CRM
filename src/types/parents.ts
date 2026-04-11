@@ -6,6 +6,7 @@ export type Parent = {
   phone: string | null;
   address_line_1: string | null;
   city: string | null;
+  county: string | null;
   postal_code: string | null;
   country: string | null;
   preferred_contact_method: 'email' | 'phone' | 'whatsapp' | 'sms' | null;

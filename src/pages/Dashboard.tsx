@@ -1,14 +1,12 @@
 import { 
   Users, 
   Rocket, 
-  FileText, 
   CreditCard, 
   Plus,
   Send,
   Calendar,
   AlertCircle,
-  PhoneCall,
-  CheckSquare
+  PhoneCall
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -38,35 +36,7 @@ function StatCard({ title, value, subtitle, gradientClass }: { title: string, va
   );
 }
 
-function TaskItem({ title, relatedRecord, dueDate, isOverdue }) {
-  return (
-    <div className={styles.taskItem}>
-      <div className={styles.taskItemLeft}>
-        <span className={styles.taskItemTitle}>{title}</span>
-        <span className={styles.taskItemRecord}>{relatedRecord}</span>
-      </div>
-      <div className={`${styles.taskItemDate} ${isOverdue ? styles.taskOverdue : styles.taskNormal}`}>
-        {dueDate}
-      </div>
-    </div>
-  );
-}
 
-function ActivityItem({ icon: Icon, title, description, time }) {
-  return (
-    <div className={styles.activityItem}>
-      <div className={styles.activityLine} />
-      <div className={styles.activityIconWrapper}>
-        <Icon size={14} />
-      </div>
-      <div className={styles.activityContent}>
-        <span className={styles.activityTitle}>{title}</span>
-        <span className={styles.activityDesc}>{description}</span>
-        <span className={styles.activityTime}>{time}</span>
-      </div>
-    </div>
-  );
-}
 
 export function Dashboard() {
   const [stats, setStats] = useState({ students: 0, tutors: 0, leads: 0, parents: 0 });
@@ -112,11 +82,11 @@ export function Dashboard() {
 
       {/* Action Required Row */}
       <div className={styles.actionRow}>
-        <ActionCard title="New Leads" count={5} accentClass={styles.accentBlue} icon={Users} />
-        <ActionCard title="Calls Booked Today" count={3} accentClass={styles.accentPurple} icon={PhoneCall} />
-        <ActionCard title="Onboarding Pending" count={2} accentClass={styles.accentOrange} icon={Rocket} />
-        <ActionCard title="Overdue Payments" count={3} accentClass={styles.accentRed} icon={CreditCard} />
-        <ActionCard title="Tutors Attention" count={1} accentClass={styles.accentGreen} icon={AlertCircle} />
+        <ActionCard title="New Leads" count={0} accentClass={styles.accentBlue} icon={Users} />
+        <ActionCard title="Calls Booked Today" count={0} accentClass={styles.accentPurple} icon={PhoneCall} />
+        <ActionCard title="Onboarding Pending" count={0} accentClass={styles.accentOrange} icon={Rocket} />
+        <ActionCard title="Overdue Payments" count={0} accentClass={styles.accentRed} icon={CreditCard} />
+        <ActionCard title="Tutors Attention" count={0} accentClass={styles.accentGreen} icon={AlertCircle} />
       </div>
 
       {/* Main Content Grid */}
@@ -141,36 +111,9 @@ export function Dashboard() {
           </div>
           <div className={`${styles.cardBlock} ${styles.feedCard}`}>
             <div className={styles.activityFeed}>
-              <ActivityItem 
-                icon={Users} 
-                title="New Lead Added" 
-                description="Sarah Jenkins via Website Form" 
-                time="10 mins ago" 
-              />
-              <ActivityItem 
-                icon={Rocket} 
-                title="Onboarding Completed" 
-                description="Michael Chang finished setup" 
-                time="1 hour ago" 
-              />
-              <ActivityItem 
-                icon={FileText} 
-                title="Contract Signed" 
-                description="Emily Roberts" 
-                time="2 hours ago" 
-              />
-              <ActivityItem 
-                icon={CreditCard} 
-                title="Payment Received" 
-                description="£240 from David Smith" 
-                time="3 hours ago" 
-              />
-              <ActivityItem 
-                icon={CheckSquare} 
-                title="Task Completed" 
-                description="Reviewed new tutor application" 
-                time="5 hours ago" 
-              />
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                No recent activity
+              </div>
             </div>
           </div>
 
@@ -185,9 +128,9 @@ export function Dashboard() {
           </div>
           <div className={styles.cardBlock} style={{ marginBottom: 'var(--spacing-xl)' }}>
             <div className={styles.taskList}>
-              <TaskItem title="Follow up on pricing" relatedRecord="Lead: Sarah Jenkins" dueDate="Today" isOverdue={true} />
-              <TaskItem title="Call about missing payment" relatedRecord="Parent: David Smith" dueDate="Yesterday" isOverdue={true} />
-              <TaskItem title="Send tutor introduction email" relatedRecord="Tutor: Emily Roberts" dueDate="Tomorrow" isOverdue={false} />
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                No tasks for today
+              </div>
             </div>
           </div>
 
@@ -197,8 +140,9 @@ export function Dashboard() {
           </div>
           <div className={styles.cardBlock}>
             <div className={styles.taskList}>
-              <TaskItem title="Lead Discovery Call" relatedRecord="Sara Jenkins" dueDate="Today 14:00" isOverdue={false} />
-              <TaskItem title="Tutor Interview" relatedRecord="Marcus Wright" dueDate="Tomorrow 10:00" isOverdue={false} />
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                No upcoming calls
+              </div>
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { supabase } from '../../lib/supabase';
 import type { Tutor } from '../../types/tutors';
-import styles from './TutorForm.module.css';
+import styles from '../../components/ui/SlideoverForm.module.css';
 
 interface TutorFormProps {
   isOpen: boolean;
@@ -23,6 +23,7 @@ export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
     phone: '',
     address_line_1: '',
     city: '',
+    county: '',
     postal_code: '',
     country: '',
     active_status: 'onboarding',
@@ -152,14 +153,23 @@ export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
               />
             </div>
             
-            <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+            <div className={styles.row}>
               <div>
-                <label className={styles.label}>City</label>
+                <label className={styles.label}>Town/City</label>
                 <Input 
                   value={formData.city || ''} 
                   onChange={(e) => handleChange('city', e.target.value)}
                 />
               </div>
+              <div>
+                <label className={styles.label}>County</label>
+                <Input 
+                  value={formData.county || ''} 
+                  onChange={(e) => handleChange('county', e.target.value)}
+                />
+              </div>
+            </div>
+            <div className={styles.row}>
               <div>
                 <label className={styles.label}>Postal Code</label>
                 <Input 
@@ -167,6 +177,7 @@ export function TutorForm({ isOpen, onClose, tutor }: TutorFormProps) {
                   onChange={(e) => handleChange('postal_code', e.target.value)}
                 />
               </div>
+              <div></div>
             </div>
           </div>
 

@@ -9,8 +9,8 @@ import { StudentsListPage } from './pages/students/StudentsListPage';
 import { StudentDetailPage } from './pages/students/StudentDetailPage';
 import { TutorsListPage } from './pages/tutors/TutorsListPage';
 import { TutorDetailPage } from './pages/tutors/TutorDetailPage';
+import { PipelineKanbanPage } from './pages/pipelines/PipelineKanbanPage';
 import { 
-  PipelinesPage, 
   ContractsPage, 
   CommunicationsPage, 
   PaymentsPage, 
@@ -42,7 +42,8 @@ function App() {
           <Route path="tutors" element={<TutorsListPage />} />
           <Route path="tutors/:id" element={<TutorDetailPage />} />
           
-          <Route path="pipelines" element={<PipelinesPage />} />
+          <Route path="pipelines" element={<PipelineKanbanPage />} />
+
           <Route path="onboarding">
             <Route index element={<OnboardingSubmissionsPage />} />
             <Route path=":id" element={<OnboardingReviewPage />} />

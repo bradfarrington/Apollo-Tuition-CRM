@@ -4,7 +4,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import styles from './ParentForm.module.css';
+import styles from '../../components/ui/SlideoverForm.module.css';
 
 interface ParentFormProps {
   isOpen: boolean;
@@ -39,6 +39,7 @@ export function ParentForm({ isOpen, onClose, parentId }: ParentFormProps) {
       preferred_contact_method: (form.elements.namedItem('preferred_contact_method') as HTMLSelectElement).value,
       address_line_1: (form.elements.namedItem('address_line_1') as HTMLInputElement).value || null,
       city: (form.elements.namedItem('city') as HTMLInputElement).value || null,
+      county: (form.elements.namedItem('county') as HTMLInputElement).value || null,
       postal_code: (form.elements.namedItem('postal_code') as HTMLInputElement).value || null,
       notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value || null,
       status: (form.elements.namedItem('status') as HTMLSelectElement).value,
@@ -118,15 +119,22 @@ export function ParentForm({ isOpen, onClose, parentId }: ParentFormProps) {
                 <label className={styles.label}>Address Line 1</label>
                 <Input name="address_line_1" defaultValue={parentData?.address_line_1} placeholder="123 Street Name" />
               </div>
-              <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+              <div className={styles.row}>
                 <div>
-                  <label className={styles.label}>City</label>
+                  <label className={styles.label}>Town/City</label>
                   <Input name="city" defaultValue={parentData?.city} placeholder="London" />
                 </div>
+                <div>
+                  <label className={styles.label}>County</label>
+                  <Input name="county" defaultValue={parentData?.county} placeholder="Greater London" />
+                </div>
+              </div>
+              <div className={styles.row}>
                 <div>
                   <label className={styles.label}>Postal Code</label>
                   <Input name="postal_code" defaultValue={parentData?.postal_code} placeholder="SW1A 1AA" />
                 </div>
+                <div></div>
               </div>
             </div>
 

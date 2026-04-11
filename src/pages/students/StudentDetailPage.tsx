@@ -341,7 +341,7 @@ export function StudentDetailPage() {
             >
               <GraduationCap size={15} />
               Enrolments
-              <span className={styles.tabCount}>2</span>
+              <span className={styles.tabCount}>0</span>
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'documents' ? styles.active : ''}`}
@@ -367,40 +367,15 @@ export function StudentDetailPage() {
                 <div className={styles.tabCardHeader}>
                   <h3 className={styles.tabCardTitle}>
                     Active Enrolments
-                    <span className={styles.tabCount}>2</span>
+                    <span className={styles.tabCount}>0</span>
                   </h3>
                   <div className={styles.tabCardActions}>
                     <button className={styles.filterBtn}><Plus size={13} /> Add</button>
                   </div>
                 </div>
                 <div className={styles.tabCardBody}>
-                  <div className={styles.linkedItem}>
-                    <div className={styles.linkedItemLeft}>
-                      <div className={`${styles.linkedItemAvatar} ${styles.student}`}>
-                        <GraduationCap size={18} />
-                      </div>
-                      <div className={styles.linkedItemContent}>
-                        <span className={styles.linkedItemTitle}>Mathematics (KS3)</span>
-                        <span className={styles.linkedItemMeta}>Weekly on Tuesdays 17:00</span>
-                      </div>
-                    </div>
-                    <div className={styles.linkedItemRight}>
-                      <Badge variant="success">Active</Badge>
-                    </div>
-                  </div>
-                  <div className={styles.linkedItem}>
-                    <div className={styles.linkedItemLeft}>
-                      <div className={`${styles.linkedItemAvatar} ${styles.student}`}>
-                        <GraduationCap size={18} />
-                      </div>
-                      <div className={styles.linkedItemContent}>
-                        <span className={styles.linkedItemTitle}>Science (KS3)</span>
-                        <span className={styles.linkedItemMeta}>Weekly on Thursdays 18:00</span>
-                      </div>
-                    </div>
-                    <div className={styles.linkedItemRight}>
-                      <Badge variant="success">Active</Badge>
-                    </div>
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                    No enrolments yet
                   </div>
                 </div>
               </>
@@ -551,19 +526,8 @@ export function StudentDetailPage() {
                   </Button>
                 </div>
                 <div className={styles.sectionCardBody}>
-                  <div className={styles.taskItem}>
-                    <input type="checkbox" className={styles.taskCheckbox} />
-                    <div className={styles.taskInfo}>
-                      <span className={styles.taskTitle}>Send term progress report</span>
-                      <span className={styles.taskMeta}>Due tomorrow</span>
-                    </div>
-                  </div>
-                  <div className={styles.taskItem}>
-                    <input type="checkbox" className={styles.taskCheckbox} />
-                    <div className={styles.taskInfo}>
-                      <span className={styles.taskTitle}>Check Math homework</span>
-                      <span className={styles.taskMeta} style={{ color: '#ef4444' }}>Overdue</span>
-                    </div>
+                  <div style={{ padding: '16px 20px', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                    No tasks
                   </div>
                 </div>
               </div>

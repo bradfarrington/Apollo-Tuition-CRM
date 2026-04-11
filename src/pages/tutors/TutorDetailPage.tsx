@@ -422,13 +422,7 @@ export function TutorDetailPage() {
                       </div>
                     </div>
                   ))}
-                  <div className={styles.taskItem}>
-                    <input type="checkbox" className={styles.taskCheckbox} defaultChecked />
-                    <div className={styles.taskInfo}>
-                      <span className={styles.taskTitle} style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)' }}>Send onboarding pack</span>
-                      <span className={styles.taskMeta}>Completed</span>
-                    </div>
-                  </div>
+
                 </div>
               </div>
             </div>

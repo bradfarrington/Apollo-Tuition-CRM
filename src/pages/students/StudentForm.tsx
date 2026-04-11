@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { DatePicker } from '../../components/ui/DatePicker';
-import styles from './StudentForm.module.css';
+import styles from '../../components/ui/SlideoverForm.module.css';
 import { useEffect, useState } from 'react';
 import type { Student } from '../../types/students';
 import { useSubjects } from '../../contexts/SubjectsContext';

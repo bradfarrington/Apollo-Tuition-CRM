@@ -2,7 +2,7 @@ import { GenericList } from './GenericList';
 
 export function LeadsPage() { return <GenericList title="Leads" addItemText="Add Lead" />; }
 export function StudentsPage() { return <GenericList title="Students" addItemText="Add Student" />; }
-export function PipelinesPage() { return <GenericList title="Pipelines" addItemText="New Pipeline" />; }
+
 export function ContractsPage() { return <GenericList title="Contracts" addItemText="Create Contract" />; }
 export function CommunicationsPage() { return <GenericList title="Communications" addItemText="New Message" />; }
 export function PaymentsPage() { return <GenericList title="Payments" addItemText="Create Invoice" />; }

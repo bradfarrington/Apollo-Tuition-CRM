@@ -213,7 +213,7 @@ export function ParentDetailPage() {
             >
               <GraduationCap size={15} />
               Students
-              <span className={styles.tabCount}>1</span>
+              <span className={styles.tabCount}>0</span>
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'invoices' ? styles.active : ''}`}
@@ -221,7 +221,7 @@ export function ParentDetailPage() {
             >
               <CreditCard size={15} />
               Invoices
-              <span className={styles.tabCount}>2</span>
+              <span className={styles.tabCount}>0</span>
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'contracts' ? styles.active : ''}`}
@@ -229,7 +229,7 @@ export function ParentDetailPage() {
             >
               <FileText size={15} />
               Documents
-              <span className={styles.tabCount}>1</span>
+              <span className={styles.tabCount}>0</span>
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'communications' ? styles.active : ''}`}
@@ -247,7 +247,7 @@ export function ParentDetailPage() {
                 <div className={styles.tabCardHeader}>
                   <h3 className={styles.tabCardTitle}>
                     Students
-                    <span className={styles.tabCount}>1</span>
+                    <span className={styles.tabCount}>0</span>
                   </h3>
                   <div className={styles.tabCardActions}>
                     <button className={styles.sortBtn}><ArrowUpDown size={13} /> Sort</button>
@@ -255,19 +255,8 @@ export function ParentDetailPage() {
                   </div>
                 </div>
                 <div className={styles.tabCardBody}>
-                  <div className={styles.linkedItem}>
-                    <div className={styles.linkedItemLeft}>
-                      <div className={`${styles.linkedItemAvatar} ${styles.student}`}>
-                        <GraduationCap size={18} />
-                      </div>
-                      <div className={styles.linkedItemContent}>
-                        <Link to="/students/s1" className={styles.linkedItemTitle}>John Connor</Link>
-                        <span className={styles.linkedItemMeta}>Year 9 • Enrolled in Math GCSE</span>
-                      </div>
-                    </div>
-                    <div className={styles.linkedItemRight}>
-                      <Badge variant="success">Active</Badge>
-                    </div>
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                    No linked students
                   </div>
                 </div>
               </>
@@ -278,7 +267,7 @@ export function ParentDetailPage() {
                 <div className={styles.tabCardHeader}>
                   <h3 className={styles.tabCardTitle}>
                     Invoices
-                    <span className={styles.tabCount}>2</span>
+                    <span className={styles.tabCount}>0</span>
                   </h3>
                   <div className={styles.tabCardActions}>
                     <button className={styles.sortBtn}><ArrowUpDown size={13} /> Sort</button>
@@ -286,35 +275,8 @@ export function ParentDetailPage() {
                   </div>
                 </div>
                 <div className={styles.tabCardBody}>
-                  <div className={styles.linkedItem}>
-                    <div className={styles.linkedItemLeft}>
-                      <div className={`${styles.linkedItemAvatar} ${styles.invoice}`}>
-                        <CreditCard size={18} />
-                      </div>
-                      <div className={styles.linkedItemContent}>
-                        <Link to="#" className={styles.linkedItemTitle}>Invoice #INV-2026-004</Link>
-                        <span className={styles.linkedItemMeta}>£240.00 • Due 1st May 2026</span>
-                      </div>
-                    </div>
-                    <div className={styles.linkedItemRight}>
-                      <span className={styles.linkedItemDate}>1 May 2026</span>
-                      <Badge variant="warning">Open</Badge>
-                    </div>
-                  </div>
-                  <div className={styles.linkedItem}>
-                    <div className={styles.linkedItemLeft}>
-                      <div className={`${styles.linkedItemAvatar} ${styles.invoice}`}>
-                        <CreditCard size={18} />
-                      </div>
-                      <div className={styles.linkedItemContent}>
-                        <Link to="#" className={styles.linkedItemTitle}>Invoice #INV-2026-001</Link>
-                        <span className={styles.linkedItemMeta}>£240.00 • Paid on 1st Apr 2026</span>
-                      </div>
-                    </div>
-                    <div className={styles.linkedItemRight}>
-                      <span className={styles.linkedItemDate}>1 Apr 2026</span>
-                      <Badge variant="success">Paid</Badge>
-                    </div>
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                    No invoices yet
                   </div>
                 </div>
               </>
@@ -456,26 +418,8 @@ export function ParentDetailPage() {
                   </Button>
                 </div>
                 <div className={styles.sectionCardBody}>
-                  <div className={styles.taskItem}>
-                    <input type="checkbox" className={styles.taskCheckbox} />
-                    <div className={styles.taskInfo}>
-                      <span className={styles.taskTitle}>Send Welcome Pack</span>
-                      <span className={styles.taskMeta}>Due Tomorrow</span>
-                    </div>
-                  </div>
-                  <div className={styles.taskItem}>
-                    <input type="checkbox" className={styles.taskCheckbox} />
-                    <div className={styles.taskInfo}>
-                      <span className={styles.taskTitle}>Schedule onboarding call</span>
-                      <span className={styles.taskMeta}>Due in 3 days</span>
-                    </div>
-                  </div>
-                  <div className={styles.taskItem}>
-                    <input type="checkbox" className={styles.taskCheckbox} defaultChecked />
-                    <div className={styles.taskInfo}>
-                      <span className={styles.taskTitle} style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)' }}>Initial enquiry follow-up</span>
-                      <span className={styles.taskMeta}>Completed</span>
-                    </div>
+                  <div style={{ padding: '16px 20px', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                    No tasks
                   </div>
                 </div>
               </div>

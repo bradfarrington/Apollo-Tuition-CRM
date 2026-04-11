@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { ArrowLeft, Edit, Mail, Calendar } from 'lucide-react';
+import { ArrowLeft, Edit, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './GenericDetail.module.css';
 
@@ -45,23 +45,23 @@ export function GenericDetail({ title = 'Record Detail', type = 'Record' }) {
               <div className={styles.fieldGrid}>
                 <div className={styles.field}>
                   <label>Full Name</label>
-                  <p>Alice Smith</p>
+                  <p>-</p>
                 </div>
                 <div className={styles.field}>
                   <label>Email Address</label>
-                  <p>alice.smith@example.com</p>
+                  <p>-</p>
                 </div>
                 <div className={styles.field}>
                   <label>Phone Number</label>
-                  <p>+44 7700 900077</p>
+                  <p>-</p>
                 </div>
                 <div className={styles.field}>
                   <label>Date of Birth</label>
-                  <p>May 15, 2010</p>
+                  <p>-</p>
                 </div>
                 <div className={styles.fieldFull}>
                   <label>Notes</label>
-                  <p>Prefers online sessions during the weekends. Needs focus on A-Level Mathematics.</p>
+                  <p>-</p>
                 </div>
               </div>
             </CardContent>
@@ -73,23 +73,8 @@ export function GenericDetail({ title = 'Record Detail', type = 'Record' }) {
             </CardHeader>
             <CardContent>
               <div className={styles.activityFeed}>
-                <div className={styles.activityItem}>
-                  <div className={styles.activityIcon}>
-                    <Calendar size={14} />
-                  </div>
-                  <div className={styles.activityContent}>
-                    <p className={styles.activityText}>Attended Mathematics Session</p>
-                    <span className={styles.activityTime}>2 days ago</span>
-                  </div>
-                </div>
-                <div className={styles.activityItem}>
-                  <div className={styles.activityIcon}>
-                    <Mail size={14} />
-                  </div>
-                  <div className={styles.activityContent}>
-                    <p className={styles.activityText}>Contract signed by parent</p>
-                    <span className={styles.activityTime}>1 week ago</span>
-                  </div>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                  No recent activity
                 </div>
               </div>
             </CardContent>
@@ -119,19 +104,8 @@ export function GenericDetail({ title = 'Record Detail', type = 'Record' }) {
               <CardTitle>Relationships</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={styles.relation}>
-                <div className={styles.relationAvatar}>SM</div>
-                <div>
-                  <p className={styles.relationName}>Sarah Smith</p>
-                  <p className={styles.relationType}>Parent / Guardian</p>
-                </div>
-              </div>
-              <div className={styles.relation}>
-                <div className={styles.relationAvatar}>RJ</div>
-                <div>
-                  <p className={styles.relationName}>Robert Jones</p>
-                  <p className={styles.relationType}>Assigned Tutor</p>
-                </div>
+              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                No relationships linked
               </div>
             </CardContent>
           </Card>
