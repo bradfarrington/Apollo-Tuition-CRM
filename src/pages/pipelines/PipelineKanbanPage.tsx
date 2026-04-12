@@ -5,6 +5,10 @@ import { Settings, Plus, X, Mail, Phone, Check, Columns3 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PipelineSettingsModal } from './PipelineSettingsModal';
+import { ConvertConfirmModal } from '../../components/ui/ConvertConfirmModal';
+import { LostReasonModal } from '../../components/ui/LostReasonModal';
+import { useSubjects } from '../../contexts/SubjectsContext';
+import { convertEnquiryToStudentAndParent } from '../../lib/conversions';
 import styles from './PipelineKanbanPage.module.css';
 
 /* ---- Types ---- */
@@ -90,6 +94,10 @@ export function PipelineKanbanPage() {
   const [addEntityResults, setAddEntityResults] = useState<any[]>([]);
   const [existingEntityIds, setExistingEntityIds] = useState<Set<string>>(new Set());
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const [pendingConvertDrop, setPendingConvertDrop] = useState<{cardId: string, stageId: string} | null>(null);
+  const [pendingLostDrop, setPendingLostDrop] = useState<{cardId: string, stageId: string} | null>(null);
+
+  const { activeSubjects } = useSubjects();
 
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
 
@@ -194,16 +202,111 @@ export function PipelineKanbanPage() {
     setDragOverStageId(null);
   };
 
+  const finalizeDrop = async (cardId: string, stageId: string, newStatus: string | null = null, lostReason: string | null = null) => {
+    // Optimistic update
+    setCards(prev => prev.map(c => c.id === cardId ? { ...c, stage_id: stageId } : c));
+    
+    // Persist
+    await supabase.from('pipeline_cards').update({ stage_id: stageId }).eq('id', cardId);
+
+    const card = cards.find(c => c.id === cardId);
+    if (card && newStatus) {
+         if (card.entity_type === 'enquiry') {
+           const updatePayload: any = { status: newStatus };
+           if (lostReason) updatePayload.lost_reason = lostReason;
+           await supabase.from('enquiries').update(updatePayload).eq('id', card.entity_id);
+           
+           if (card.entity_data?.lead_id) {
+             const leadId = card.entity_data.lead_id;
+             // Evaluate overall Lead status based on all its Enquiries
+             const { data: siblings } = await supabase.from('enquiries').select('id, status').eq('lead_id', leadId);
+             if (siblings) {
+               const updatedSiblings = siblings.map(s => s.id === card.entity_id ? { ...s, status: newStatus } : s);
+               
+               let computedLeadStatus = 'open';
+               const wonCount = updatedSiblings.filter(e => e.status === 'won').length;
+               const lostCount = updatedSiblings.filter(e => e.status === 'lost').length;
+               const total = updatedSiblings.length;
+               
+               if (wonCount > 0) computedLeadStatus = 'won';
+               else if (lostCount === total && total > 0) computedLeadStatus = 'lost';
+               else computedLeadStatus = 'open';
+               
+               await supabase.from('leads').update({ status: computedLeadStatus }).eq('id', leadId);
+             }
+           }
+         } else if (card.entity_type === 'lead') {
+           await supabase.from('leads').update({ status: newStatus }).eq('id', card.entity_id);
+         }
+    }
+    // refresh board silently to catch any derived state changes
+    fetchBoard();
+  };
+
   const handleColumnDrop = async (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     setDragOverStageId(null);
     const cardId = e.dataTransfer.getData('cardId');
     if (!cardId) return;
 
-    // Optimistic update
-    setCards(prev => prev.map(c => c.id === cardId ? { ...c, stage_id: stageId } : c));
-    // Persist
-    await supabase.from('pipeline_cards').update({ stage_id: stageId }).eq('id', cardId);
+    const stage = stages.find(s => s.id === stageId);
+    const card = cards.find(c => c.id === cardId);
+    if (!stage || !card) return;
+
+    const sName = stage.name.toLowerCase();
+    
+    // Intercept if Won or Lost
+    if (sName.includes('won') || sName.includes('converted')) {
+       if (card.entity_type === 'enquiry') {
+         setPendingConvertDrop({ cardId, stageId });
+         return;
+       }
+       await finalizeDrop(cardId, stageId, 'won', null);
+       return;
+    } else if (sName.includes('lost')) {
+       if (card.entity_type === 'enquiry') {
+         setPendingLostDrop({ cardId, stageId });
+         return;
+       }
+       await finalizeDrop(cardId, stageId, 'lost', null);
+       return;
+    } else if (sName.includes('open') || sName.includes('new') || sName.includes('progress')) {
+       await finalizeDrop(cardId, stageId, 'open', null);
+       return;
+    }
+
+    await finalizeDrop(cardId, stageId, null, null);
+  };
+
+  const handleConfirmConvert = async () => {
+    if (!pendingConvertDrop) return;
+    const { cardId, stageId } = pendingConvertDrop;
+    const card = cards.find(c => c.id === cardId);
+    
+    if (card && card.entity_type === 'enquiry' && card.entity_data?.lead_id) {
+      try {
+        const { data: lead } = await supabase.from('leads').select('*').eq('id', card.entity_data.lead_id).single();
+        // Fallback fetch for full enquiry data, missing subjects etc
+        const { data: fullEnquiry } = await supabase.from('enquiries').select('*').eq('id', card.entity_id).single();
+        if (lead && fullEnquiry) {
+           await convertEnquiryToStudentAndParent(lead, fullEnquiry, activeSubjects);
+        }
+      } catch (err) {
+        console.error('Failed to convert from pipeline:', err);
+        alert('Failed to convert enquiry.');
+        setPendingConvertDrop(null);
+        return; 
+      }
+    }
+    await finalizeDrop(cardId, stageId, 'won', null);
+    setPendingConvertDrop(null);
+  };
+
+  const handleConfirmLost = async (reason: string) => {
+    if (!pendingLostDrop) return;
+    const { cardId, stageId } = pendingLostDrop;
+    await finalizeDrop(cardId, stageId, 'lost', reason);
+    setPendingLostDrop(null);
   };
 
   /* ---- Add Entity Modal ---- */
@@ -509,6 +612,19 @@ export function PipelineKanbanPage() {
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onUpdate={() => { fetchPipelines(); fetchBoard(); }}
+      />
+      
+      {/* Workflow Modals */}
+      <ConvertConfirmModal
+        isOpen={!!pendingConvertDrop}
+        onClose={() => setPendingConvertDrop(null)}
+        onConfirm={handleConfirmConvert}
+      />
+
+      <LostReasonModal
+        isOpen={!!pendingLostDrop}
+        onClose={() => setPendingLostDrop(null)}
+        onConfirm={handleConfirmLost}
       />
     </div>
   );

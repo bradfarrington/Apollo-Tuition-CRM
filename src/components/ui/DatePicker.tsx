@@ -37,6 +37,8 @@ export function DatePicker({
   const initialDate = internalValue ? new Date(internalValue) : new Date();
   const [currentMonth, setCurrentMonth] = useState(initialDate.getMonth());
   const [currentYear, setCurrentYear] = useState(initialDate.getFullYear());
+  const [viewMode, setViewMode] = useState<'calendar' | 'months' | 'years'>('calendar');
+  const [yearGridPage, setYearGridPage] = useState(initialDate.getFullYear());
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,6 +59,7 @@ export function DatePicker({
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setTimeout(() => setViewMode('calendar'), 200);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -130,6 +133,10 @@ export function DatePicker({
     setCurrentYear(newYear);
   };
 
+  const changeYearGrid = (delta: number) => {
+    setYearGridPage(prev => prev + (delta * 12));
+  };
+
   const displayValue = internalValue ? (() => {
     const d = new Date(internalValue);
     return !isNaN(d.getTime()) ? d.toLocaleDateString() : internalValue;
@@ -164,35 +171,125 @@ export function DatePicker({
 
       {isOpen && (
         <div className={styles.dropdown}>
-          <div className={styles.header}>
-            <button
-              type="button"
-              className={styles.navButton}
-              onClick={(e) => { e.stopPropagation(); changeMonth(-1); }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <div className={styles.currentMonthYear}>
-              {MONTHS[currentMonth]} {currentYear}
-            </div>
-            <button
-              type="button"
-              className={styles.navButton}
-              onClick={(e) => { e.stopPropagation(); changeMonth(1); }}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          
-          <div className={styles.daysOfWeek}>
-            {DAYS_OF_WEEK.map(day => (
-              <div key={day} className={styles.dayOfWeek}>{day}</div>
-            ))}
-          </div>
-          
-          <div className={styles.daysGrid}>
-            {generateDays()}
-          </div>
+          {viewMode === 'calendar' && (
+            <>
+              <div className={styles.header}>
+                <button
+                  type="button"
+                  className={styles.navButton}
+                  onClick={(e) => { e.stopPropagation(); changeMonth(-1); }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div 
+                  className={styles.currentMonthYear}
+                  onClick={(e) => { e.stopPropagation(); setViewMode('months'); }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {MONTHS[currentMonth]} {currentYear}
+                </div>
+                <button
+                  type="button"
+                  className={styles.navButton}
+                  onClick={(e) => { e.stopPropagation(); changeMonth(1); }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              
+              <div className={styles.daysOfWeek}>
+                {DAYS_OF_WEEK.map(day => (
+                  <div key={day} className={styles.dayOfWeek}>{day}</div>
+                ))}
+              </div>
+              
+              <div className={styles.daysGrid}>
+                {generateDays()}
+              </div>
+            </>
+          )}
+
+          {viewMode === 'months' && (
+            <>
+              <div className={styles.header}>
+                <button
+                  type="button"
+                  className={styles.navButton}
+                  onClick={(e) => { e.stopPropagation(); setCurrentYear(prev => prev - 1); }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div 
+                  className={styles.currentMonthYear}
+                  onClick={(e) => { e.stopPropagation(); setYearGridPage(currentYear); setViewMode('years'); }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {currentYear}
+                </div>
+                <button
+                  type="button"
+                  className={styles.navButton}
+                  onClick={(e) => { e.stopPropagation(); setCurrentYear(prev => prev + 1); }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div className={styles.selectionGrid}>
+                {MONTHS.map((month, index) => (
+                  <div 
+                    key={month} 
+                    className={`${styles.selectionItem} ${currentMonth === index ? styles.selectionItemSelected : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentMonth(index);
+                      setViewMode('calendar');
+                    }}
+                  >
+                    {month.substring(0, 3)}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {viewMode === 'years' && (
+            <>
+              <div className={styles.header}>
+                <button
+                  type="button"
+                  className={styles.navButton}
+                  onClick={(e) => { e.stopPropagation(); changeYearGrid(-1); }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div className={styles.currentMonthYear}>
+                  {yearGridPage - 4} - {yearGridPage + 7}
+                </div>
+                <button
+                  type="button"
+                  className={styles.navButton}
+                  onClick={(e) => { e.stopPropagation(); changeYearGrid(1); }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div className={styles.selectionGrid}>
+                {Array.from({ length: 12 }, (_, i) => yearGridPage - 4 + i).map(year => (
+                  <div 
+                    key={year} 
+                    className={`${styles.selectionItem} ${currentYear === year ? styles.selectionItemSelected : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentYear(year);
+                      setViewMode('months');
+                    }}
+                  >
+                    {year}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

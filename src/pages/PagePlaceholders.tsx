@@ -6,8 +6,6 @@ export function StudentsPage() { return <GenericList title="Students" addItemTex
 export function ContractsPage() { return <GenericList title="Contracts" addItemText="Create Contract" />; }
 export function CommunicationsPage() { return <GenericList title="Communications" addItemText="New Message" />; }
 export function PaymentsPage() { return <GenericList title="Payments" addItemText="Create Invoice" />; }
-export function TasksPage() { return <GenericList title="Tasks" addItemText="Create Task" />; }
-
 export function SettingsPage() {
   return (
     <div style={{ padding: 'var(--spacing-8)' }}>

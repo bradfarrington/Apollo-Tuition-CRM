@@ -5,16 +5,20 @@ import {
   ChevronRight, Edit2, ArrowRightCircle, Trash2, 
   MessageSquare, PhoneCall, Mail, CheckCircle2,
   User, Calendar, Plus, Pencil, FileText, Briefcase,
-  MapPin, Heart, X, Check
+  MapPin, Heart, X, Check, AlertCircle
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
 import { LeadForm } from './LeadForm';
+import { TaskFormModal } from '../../components/tasks/TaskFormModal';
 import type { Lead } from '../../types/leads';
+import type { Task } from '../../types/tasks';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { ReinstateModal } from '../../components/ui/ReinstateModal';
+import { ViewReasonModal } from '../../components/ui/ViewReasonModal';
 import { DocumentManager } from '../../components/documents/DocumentManager';
 import { useSubjects } from '../../contexts/SubjectsContext';
-import { calculateCohortFromYearGroup, getKeyStageForYearGroup } from '../../utils/academicYear';
+import { convertEnquiryToStudentAndParent } from '../../lib/conversions';
 import styles from './LeadDetailPage.module.css';
 
 export function LeadDetailPage() {
@@ -29,6 +33,9 @@ export function LeadDetailPage() {
   const [formMode, setFormMode] = useState<'create' | 'edit_contact' | 'add_enquiry' | 'edit_enquiry'>('edit_contact');
   const [editingEnquiry, setEditingEnquiry] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const { activeSubjects } = useSubjects();
 
   const [isEditingStatus, setIsEditingStatus] = useState(false);
@@ -37,6 +44,9 @@ export function LeadDetailPage() {
   const [tagInputText, setTagInputText] = useState('');
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const tagInputRef = useRef<HTMLDivElement>(null);
+  
+  const [pendingReinstateEnquiryId, setPendingReinstateEnquiryId] = useState<string | null>(null);
+  const [viewingReason, setViewingReason] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from('crm_tags').select('name, color').order('name').then(({ data }) => {
@@ -145,6 +155,19 @@ export function LeadDetailPage() {
         setEnquiries([]);
       }
 
+      // Fetch Tasks
+      const { data: taskData } = await supabase
+        .from('tasks')
+        .select(`
+          *, 
+          task_stages(name, color),
+          assignee:profiles!tasks_assigned_to_fkey(full_name)
+        `)
+        .eq('related_type', 'lead')
+        .eq('related_id', id)
+        .order('created_at', { ascending: false });
+      setTasks(taskData || []);
+
       setLoading(false);
   }, [id]);
 
@@ -178,62 +201,10 @@ export function LeadDetailPage() {
   };
 
   const handleConvertEnquiry = async (enquiry: any) => {
-    if (!confirm('Are you sure you want to convert this enquiry into active Students and a Parent?')) return;
+    if (!lead || !enquiry) return;
     
     try {
-      // 1. Create Parent record using the Lead's information (carry over enriched fields)
-      const nameParts = lead?.parent_name?.split(' ') || ['Unknown'];
-      const { data: parent, error: parentError } = await supabase.from('parents').insert({
-        first_name: nameParts[0],
-        last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
-        email: lead?.email,
-        phone: lead?.phone,
-        preferred_contact_method: lead?.preferred_contact_method || null,
-        address_line_1: lead?.address_line_1 || null,
-        city: lead?.city || null,
-        postal_code: lead?.postal_code || null,
-        how_heard: lead?.how_heard || lead?.source || null,
-        referral_source: lead?.source || null,
-        status: 'onboarding'
-      }).select().single();
-      
-      if (parentError) throw parentError;
-
-      // 2. Loop through enquiry.students and create Student records
-      const students = enquiry.students || [];
-      for (const stu of students) {
-         const cohort = calculateCohortFromYearGroup(stu.year_group);
-         const ks = getKeyStageForYearGroup(stu.year_group);
-
-         const { data: newStudent, error: studentError } = await supabase.from('students').insert({
-           first_name: stu.first_name,
-           last_name: stu.last_name,
-           date_of_birth: stu.date_of_birth || null,
-           status: 'onboarding',
-           school_year: stu.year_group,
-           key_stage: ks === 'N/A' ? null : ks,
-           academic_cohort: cohort,
-           primary_parent_id: parent.id,
-           notes: stu.notes || null
-         }).select().single();
-
-         if (studentError) { console.error('Error creating student:', studentError); continue; }
-         
-         // 3. Handle Subjects
-         if (stu.subjects && stu.subjects.length > 0) {
-            const matchedSubjects = activeSubjects.filter(sub => stu.subjects.includes(sub.name));
-            if (matchedSubjects.length > 0) {
-              const links = matchedSubjects.map(sub => ({
-                student_id: newStudent.id,
-                subject_id: sub.id
-              }));
-              await supabase.from('student_subjects').insert(links);
-            }
-         }
-      }
-
-      // 4. Mark Enquiry as Won
-      await supabase.from('enquiries').update({ status: 'won' }).eq('id', enquiry.id);
+      await convertEnquiryToStudentAndParent(lead, enquiry, activeSubjects);
       
       // Update Pipeline Card to move to the last stage (optional, depending on business logic)
       
@@ -243,6 +214,42 @@ export function LeadDetailPage() {
       console.error(err);
       alert('Failed to convert enquiry.');
     }
+  };
+
+  const handleReinstate = async (pipelineId: string, stageId: string) => {
+     if (!pendingReinstateEnquiryId) return;
+     try {
+       const enquiry = enquiries.find(e => e.id === pendingReinstateEnquiryId);
+       
+       // 1. Move the card to the new stage
+       await supabase.from('pipeline_cards')
+           .update({ pipeline_id: pipelineId, stage_id: stageId })
+           .eq('entity_id', pendingReinstateEnquiryId)
+           .eq('entity_type', 'enquiry');
+       
+       // 2. Append note to the enquiry
+       const now = new Date().toLocaleString();
+       let newNotes = `Reinstated at ${now}`;
+       if (enquiry?.notes) {
+          newNotes = `${enquiry.notes}\n\n${newNotes}`;
+       }
+       
+       // 3. Update enquiry status and notes
+       await supabase.from('enquiries').update({ status: 'open', lost_reason: null, notes: newNotes }).eq('id', pendingReinstateEnquiryId);
+       
+       // 4. Also update Lead status if it was lost
+       if (lead?.status === 'lost') {
+          await supabase.from('leads').update({ status: 'open' }).eq('id', lead.id);
+       }
+       
+       alert('Enquiry reinstated and is back in the active pipeline!');
+       fetchLead(); // refresh view
+     } catch (err) {
+       console.error('Failed to reinstate:', err);
+       alert('Failed to reinstate enquiry.');
+     } finally {
+       setPendingReinstateEnquiryId(null);
+     }
   };
 
   if (loading || !lead) {
@@ -593,6 +600,17 @@ export function LeadDetailPage() {
                              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#10b981', padding: '8px', background: '#ecfdf5', borderRadius: 'var(--radius-md)' }}>
                                <CheckCircle2 size={16} /> Converted
                              </span>
+                           ) : enq.status === 'lost' ? (
+                             <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+                               <Button variant="secondary" size="sm" style={{ flex: 1, justifyContent: 'center', background: 'var(--color-background-elevated)', color: 'var(--color-text-secondary)' }} onClick={(e) => { e.stopPropagation(); setPendingReinstateEnquiryId(enq.id); }}>
+                                  Re-instate
+                               </Button>
+                               {enq.lost_reason && (
+                                 <Button variant="ghost" size="sm" style={{ flex: 1, justifyContent: 'center', color: 'var(--color-pastel-pink-strong)', border: '1px solid var(--color-pastel-pink-strong)' }} onClick={(e) => { e.stopPropagation(); setViewingReason(enq.lost_reason); }}>
+                                    View Reason
+                                 </Button>
+                               )}
+                             </div>
                            ) : (
                              <Button variant="secondary" size="sm" style={{ width: '100%', justifyContent: 'center', background: 'var(--color-background-elevated)' }} onClick={(e) => { e.stopPropagation(); handleConvertEnquiry(enq); }}>
                                 Convert to Students
@@ -683,17 +701,82 @@ export function LeadDetailPage() {
                 <div className={styles.sectionCardHeader}>
                   <h3 className={styles.sectionCardTitle}>
                     <span className={styles.sectionCardTitleIcon}><CheckCircle2 size={14} /></span>
-                    Tasks
+                    Tasks {tasks.length > 0 && `(${tasks.length})`}
                   </h3>
-                  <Button variant="secondary" size="sm">
+                  <Button variant="secondary" size="sm" onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}>
                     <Plus size={14} />
                     Add
                   </Button>
                 </div>
                 <div className={styles.sectionCardBody}>
-                  <div style={{ padding: '16px 20px', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
-                    No tasks
-                  </div>
+                  {tasks.length === 0 ? (
+                    <div style={{ padding: '16px 20px', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                      No tasks
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {tasks.map(task => {
+                        const priorityColors: Record<string, { color: string, bg: string, label: string }> = {
+                          urgent: { color: '#dc2626', bg: '#fef2f2', label: 'Urgent' },
+                          high: { color: '#ea580c', bg: '#fff7ed', label: 'High' },
+                          medium: { color: '#2563eb', bg: '#eff6ff', label: 'Medium' },
+                          low: { color: '#16a34a', bg: '#f0fdf4', label: 'Low' }
+                        };
+                        const pConf = task.priority ? (priorityColors[task.priority] || priorityColors.medium) : null;
+
+                        return (
+                          <div 
+                            key={task.id} 
+                            style={{ padding: '16px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer', transition: 'background-color 0.15s ease' }} 
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-bg-subtle)'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            onClick={() => { setEditingTask(task); setIsTaskModalOpen(true); }}
+                          >
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+                              <div style={{ marginTop: '2px', color: task.task_stages?.color || 'var(--color-text-tertiary)', flexShrink: 0 }}>
+                                <CheckCircle2 size={18} />
+                              </div>
+                              <div style={{ minWidth: 0, paddingRight: '16px' }}>
+                                <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: task.description ? '4px' : '0' }}>{task.title}</div>
+                                {task.description && (
+                                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
+                                    {task.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
+                              {task.task_stages && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: task.task_stages.color || 'var(--color-text-secondary)', background: task.task_stages.color ? `${task.task_stages.color}1A` : 'var(--color-bg-base)', padding: '2px 8px', borderRadius: '12px' }}>
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: task.task_stages.color || 'var(--color-text-tertiary)' }} />
+                                  {task.task_stages.name}
+                                </div>
+                              )}
+                              {task.due_date && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#0d9488', background: '#ccfbf1', padding: '2px 8px', borderRadius: '12px' }}>
+                                  <Calendar size={11} />
+                                  {new Date(task.due_date).toLocaleDateString()}
+                                </div>
+                              )}
+                              {task.assignee?.full_name && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#6366f1', background: '#e0e7ff', padding: '2px 8px', borderRadius: '12px' }}>
+                                  <User size={11} />
+                                  {task.assignee.full_name}
+                                </div>
+                              )}
+                              {pConf && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: pConf.color, background: pConf.bg, padding: '2px 8px', borderRadius: '12px' }}>
+                                  {task.priority === 'urgent' && <AlertCircle size={10} />}
+                                  {pConf.label}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -716,6 +799,27 @@ export function LeadDetailPage() {
         onConfirm={handleDeleteConfirm}
         title="Delete Lead"
         message="Are you sure you want to delete this lead? This action cannot be undone and will remove all associated data."
+      />
+      <TaskFormModal
+         isOpen={isTaskModalOpen}
+         onClose={() => setIsTaskModalOpen(false)}
+         onUpdate={() => fetchLead()}
+         task={editingTask}
+         prefilledRelatedType="lead"
+         prefilledRelatedId={lead.id}
+      />
+      
+      <ReinstateModal
+        isOpen={!!pendingReinstateEnquiryId}
+        onClose={() => setPendingReinstateEnquiryId(null)}
+        onConfirm={handleReinstate}
+        entityType="enquiry"
+      />
+      
+      <ViewReasonModal
+        isOpen={!!viewingReason}
+        onClose={() => setViewingReason(null)}
+        reason={viewingReason || ''}
       />
     </div>
   );

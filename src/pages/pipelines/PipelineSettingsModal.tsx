@@ -4,6 +4,7 @@ import { X, ArrowLeft, Plus, Trash2, ChevronRight, Check, GripVertical } from 'l
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { HexColorPicker } from 'react-colorful';
 import styles from './PipelineSettingsModal.module.css';
 
 /* ---- Field registry per entity ---- */
@@ -103,6 +104,7 @@ export function PipelineSettingsModal({ isOpen, onClose, onUpdate, initialPipeli
   const [editIsDefault, setEditIsDefault] = useState(false);
   const [editIsActive, setEditIsActive] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -410,12 +412,43 @@ export function PipelineSettingsModal({ isOpen, onClose, onUpdate, initialPipeli
                       onDrop={e => handleStageDrop(e, index)}
                     >
                       <span className={styles.stageDragHandle}><GripVertical size={14} /></span>
-                      <input
-                        type="color"
-                        value={stage.color || '#6b7280'}
-                        onChange={e => updateStage(index, { color: e.target.value })}
-                        className={styles.stageColorInput}
-                      />
+                      
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          type="button"
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            backgroundColor: stage.color || '#6b7280',
+                            border: '1px solid var(--color-border-subtle)',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                          onClick={() => setActiveColorPicker(activeColorPicker === stage.id ? null : stage.id)}
+                        />
+                        
+                        {activeColorPicker === stage.id && (
+                          <>
+                            <div 
+                              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }} 
+                              onClick={() => setActiveColorPicker(null)} 
+                            />
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              marginTop: '8px',
+                              zIndex: 20,
+                              borderRadius: '8px',
+                              boxShadow: 'var(--shadow-lg)'
+                            }}>
+                              <HexColorPicker color={stage.color || '#6b7280'} onChange={(c) => updateStage(index, { color: c })} />
+                            </div>
+                          </>
+                        )}
+                      </div>
+
                       <input
                         type="text"
                         value={stage.name}

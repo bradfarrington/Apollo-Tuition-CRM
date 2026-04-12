@@ -10,12 +10,12 @@ import { StudentDetailPage } from './pages/students/StudentDetailPage';
 import { TutorsListPage } from './pages/tutors/TutorsListPage';
 import { TutorDetailPage } from './pages/tutors/TutorDetailPage';
 import { PipelineKanbanPage } from './pages/pipelines/PipelineKanbanPage';
-import { 
-  ContractsPage, 
-  CommunicationsPage, 
-  PaymentsPage, 
-  TasksPage
+import {
+  ContractsPage,
+  CommunicationsPage,
+  PaymentsPage
 } from './pages/PagePlaceholders';
+import { TasksKanbanPage } from './pages/tasks/TasksKanbanPage';
 import { SettingsLayout } from './components/layout/SettingsLayout';
 import { PipelinesListPage } from './pages/settings/pipelines/PipelinesListPage';
 import { PipelineDetailPage } from './pages/settings/pipelines/PipelineDetailPage';
@@ -52,7 +52,7 @@ function App() {
           <Route path="contracts" element={<ContractsPage />} />
           <Route path="communications" element={<CommunicationsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
-          <Route path="tasks" element={<TasksPage />} />
+          <Route path="tasks" element={<TasksKanbanPage />} />
           
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<div style={{ padding: 'var(--spacing-8)' }}>Select a settings category</div>} />

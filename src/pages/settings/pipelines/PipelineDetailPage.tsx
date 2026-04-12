@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { Card, CardHeader, CardContent } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { StageBadge } from '../../../components/ui/StageBadge';
+import { HexColorPicker } from 'react-colorful';
 import styles from './PipelineDetailPage.module.css';
 
 export function PipelineDetailPage() {
@@ -13,6 +14,7 @@ export function PipelineDetailPage() {
   const [pipeline, setPipeline] = useState<any>(null);
   const [stages, setStages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -111,8 +113,44 @@ export function PipelineDetailPage() {
                     <div className={styles.dragHandle}>⋮⋮</div>
                     <div className={styles.stageContent}>
                        <Input defaultValue={stage.name} className={styles.stageNameInput} />
-                       <div className={styles.colorPickerWrapper}>
-                          <input type="color" defaultValue={stage.color} className={styles.colorInput} />
+                       <div className={styles.colorPickerWrapper} style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '4px',
+                              backgroundColor: stage.color || '#6b7280',
+                              border: '1px solid var(--color-border-subtle)',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                            onClick={() => setActiveColorPicker(activeColorPicker === stage.id ? null : stage.id)}
+                          />
+                          
+                          {activeColorPicker === stage.id && (
+                            <>
+                              <div 
+                                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }} 
+                                onClick={() => setActiveColorPicker(null)} 
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: '8px',
+                                zIndex: 20,
+                                borderRadius: '8px',
+                                boxShadow: 'var(--shadow-lg)'
+                              }}>
+                                <HexColorPicker color={stage.color || '#6b7280'} onChange={(c) => {
+                                   const newStages = [...stages];
+                                   newStages[index].color = c;
+                                   setStages(newStages);
+                                }} />
+                              </div>
+                            </>
+                          )}
                        </div>
                        <StageBadge stage={stage.name} colorHex={stage.color} />
                     </div>

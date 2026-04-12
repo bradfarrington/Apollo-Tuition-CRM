@@ -7,6 +7,7 @@ export interface Lead {
   email?: string;
   phone?: string;
   preferred_contact_method?: string;
+  relationship_to_student?: string;
   address_line_1?: string;
   city?: string;
   postal_code?: string;

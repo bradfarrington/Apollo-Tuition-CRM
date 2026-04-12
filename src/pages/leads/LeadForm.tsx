@@ -27,6 +27,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     email: '',
     phone: '',
     preferred_contact_method: '',
+    relationship_to_student: '',
     address_line_1: '',
     city: '',
     postal_code: '',
@@ -99,6 +100,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           email: lead.email || '',
           phone: lead.phone || '',
           preferred_contact_method: lead.preferred_contact_method || '',
+          relationship_to_student: lead.relationship_to_student || '',
           address_line_1: lead.address_line_1 || '',
           city: lead.city || '',
           postal_code: lead.postal_code || '',
@@ -115,6 +117,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           email: lead?.email || '',
           phone: lead?.phone || '',
           preferred_contact_method: lead?.preferred_contact_method || '',
+          relationship_to_student: lead?.relationship_to_student || '',
           address_line_1: lead?.address_line_1 || '',
           city: lead?.city || '',
           postal_code: lead?.postal_code || '',
@@ -140,7 +143,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
         setStudents(initialStudents);
         setExpandedStudentId(initialStudents[0].id);
       } else {
-        setFormData({ parent_name: '', email: '', phone: '', preferred_contact_method: '', address_line_1: '', city: '', postal_code: '', how_heard: '', message: '', tags: [], status: 'open' });
+        setFormData({ parent_name: '', email: '', phone: '', preferred_contact_method: '', relationship_to_student: '', address_line_1: '', city: '', postal_code: '', how_heard: '', message: '', tags: [], status: 'open' });
         setEnquiry({ enquiry_type: '', message: '', pipeline_id: '', stage_id: '', owner_id: '', source: '', urgency: 'medium', preferred_start_date: '', lesson_frequency: '', lesson_format: '', notes: '' });
         const newId = Date.now().toString();
         setStudents([{ id: newId, first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }]);
@@ -233,6 +236,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           email: formData.email,
           phone: formData.phone,
           preferred_contact_method: formData.preferred_contact_method || null,
+          relationship_to_student: formData.relationship_to_student || null,
           address_line_1: formData.address_line_1 || null,
           city: formData.city || null,
           postal_code: formData.postal_code || null,
@@ -314,6 +318,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           email: formData.email,
           phone: formData.phone,
           preferred_contact_method: formData.preferred_contact_method || null,
+          relationship_to_student: formData.relationship_to_student || null,
           address_line_1: formData.address_line_1 || null,
           city: formData.city || null,
           postal_code: formData.postal_code || null,
@@ -426,14 +431,31 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
                   {/* Basic Information */}
                   <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
                     <h3 className={styles.groupTitle}>Basic Information</h3>
-                    <div>
-                      <label className={styles.label}>Full Name *</label>
-                      <Input 
-                        required 
-                        value={formData.parent_name}
-                        onChange={e => setFormData({ ...formData, parent_name: e.target.value })}
-                        fullWidth
-                      />
+                    <div className={styles.row}>
+                      <div>
+                        <label className={styles.label}>Full Name *</label>
+                        <Input 
+                          required 
+                          value={formData.parent_name}
+                          onChange={e => setFormData({ ...formData, parent_name: e.target.value })}
+                          fullWidth
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Relationship to Student</label>
+                        <Select 
+                          value={formData.relationship_to_student}
+                          onChange={val => setFormData({ ...formData, relationship_to_student: val })}
+                          options={[
+                            { value: '', label: 'Select...' },
+                            { value: 'Mother', label: 'Mother' },
+                            { value: 'Father', label: 'Father' },
+                            { value: 'Guardian', label: 'Guardian' },
+                            { value: 'Grandparent', label: 'Grandparent' },
+                            { value: 'Other', label: 'Other' }
+                          ]}
+                        />
+                      </div>
                     </div>
                     <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
                       <div>
@@ -655,7 +677,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
                       boxShadow: isInnerExpanded ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
                       borderRadius: 'var(--radius-md)', 
                       transition: 'all 0.2s ease',
-                      overflow: 'hidden'
+                      overflow: 'visible'
                     }}>
                       <div 
                         onClick={() => setExpandedStudentId(isInnerExpanded ? null : student.id)}

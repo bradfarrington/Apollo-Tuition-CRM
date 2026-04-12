@@ -95,9 +95,29 @@
 }
 
 .currentMonthYear {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nativeSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  font-family: inherit;
   font-weight: 600;
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
+  cursor: pointer;
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.nativeSelect:hover {
+  background: var(--color-bg-subtle);
 }
 
 .daysOfWeek {
@@ -150,5 +170,39 @@
 .selectedDay {
   background-color: var(--color-accent-blue) !important;
   color: white !important;
+  font-weight: 600;
+}
+
+.selectionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.selectionItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.selectionItem:hover {
+  background-color: var(--color-bg-subtle);
+  border-color: var(--color-accent-blue);
+}
+
+.selectionItemSelected {
+  background-color: var(--color-accent-blue);
+  color: white;
+  border-color: var(--color-accent-blue);
   font-weight: 600;
 }

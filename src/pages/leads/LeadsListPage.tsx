@@ -21,6 +21,7 @@ export function LeadsListPage() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'created_at', direction: 'desc' });
   const [filters, setFilters] = useState({ source: '', status: '', enquiry_type: '', city: '', tag: '' });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [enquiriesCount, setEnquiriesCount] = useState({ total: 0, won: 0, lost: 0, open: 0 });
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -51,6 +52,23 @@ export function LeadsListPage() {
         owner: r.profiles || undefined,
       })));
     }
+
+    // Also fetch enquiries stats
+    const { data: enqData } = await supabase
+      .from('enquiries')
+      .select('status');
+      
+    if (enqData) {
+      const won = enqData.filter(e => e.status === 'won').length;
+      const lost = enqData.filter(e => e.status === 'lost').length;
+      setEnquiriesCount({
+        total: enqData.length,
+        won,
+        lost,
+        open: enqData.length - won - lost
+      });
+    }
+
     setLoading(false);
   };
 
@@ -143,9 +161,6 @@ export function LeadsListPage() {
   };
 
   const totalLeads = leads.length;
-  const wonLeads = leads.filter(l => l.status === 'won').length;
-  const lostLeads = leads.filter(l => l.status === 'lost').length;
-  const openLeads = totalLeads - wonLeads - lostLeads;
 
   return (
     <div className={styles.container}>
@@ -168,22 +183,27 @@ export function LeadsListPage() {
         <div className={`${styles.statCard} ${styles.statCardBlue}`}>
           <div className={styles.statCardIcon}><Users size={18} /></div>
           <span className={styles.statCardValue}>{totalLeads}</span>
-          <span className={styles.statCardLabel}>Total Leads</span>
+          <span className={styles.statCardLabel}>Total Families</span>
+        </div>
+        <div className={`${styles.statCard} ${styles.statCardOrange}`}>
+          <div className={styles.statCardIcon}><Users size={18} /></div>
+          <span className={styles.statCardValue}>{enquiriesCount.total}</span>
+          <span className={styles.statCardLabel}>Total Enquiries</span>
         </div>
         <div className={`${styles.statCard} ${styles.statCardPurple}`}>
           <div className={styles.statCardIcon}><UserCheck size={18} /></div>
-          <span className={styles.statCardValue}>{openLeads}</span>
-          <span className={styles.statCardLabel}>Open Leads</span>
-        </div>
-        <div className={`${styles.statCard} ${styles.statCardPink}`}>
-          <div className={styles.statCardIcon}><UserPlus size={18} /></div>
-          <span className={styles.statCardValue}>{wonLeads}</span>
-          <span className={styles.statCardLabel}>Won Leads</span>
+          <span className={styles.statCardValue}>{enquiriesCount.open}</span>
+          <span className={styles.statCardLabel}>Open Enquiries</span>
         </div>
         <div className={`${styles.statCard} ${styles.statCardGreen}`}>
+          <div className={styles.statCardIcon}><UserPlus size={18} /></div>
+          <span className={styles.statCardValue}>{enquiriesCount.won}</span>
+          <span className={styles.statCardLabel}>Won Enquiries</span>
+        </div>
+        <div className={`${styles.statCard} ${styles.statCardPink}`}>
           <div className={styles.statCardIcon}><Briefcase size={18} /></div>
-          <span className={styles.statCardValue}>{lostLeads}</span>
-          <span className={styles.statCardLabel}>Lost Leads</span>
+          <span className={styles.statCardValue}>{enquiriesCount.lost}</span>
+          <span className={styles.statCardLabel}>Lost Enquiries</span>
         </div>
       </div>
 
