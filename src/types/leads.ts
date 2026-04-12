@@ -18,6 +18,7 @@ export interface Lead {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
+  tags?: string[];
   
   // Joined fields
   pipeline_stage?: PipelineStage;

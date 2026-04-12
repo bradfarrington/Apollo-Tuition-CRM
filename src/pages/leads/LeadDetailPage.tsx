@@ -5,7 +5,7 @@ import {
   ChevronRight, Edit2, ArrowRightCircle, Trash2, 
   MessageSquare, PhoneCall, Mail, CheckCircle2,
   User, Calendar, Plus, Pencil, FileText, Briefcase,
-  MapPin, Heart
+  MapPin, Heart, X, Check
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
@@ -30,6 +30,65 @@ export function LeadDetailPage() {
   const [editingEnquiry, setEditingEnquiry] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { activeSubjects } = useSubjects();
+
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [availableTags, setAvailableTags] = useState<{name: string, color: string}[]>([]);
+  const [tagInputText, setTagInputText] = useState('');
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const tagInputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    supabase.from('crm_tags').select('name, color').order('name').then(({ data }) => {
+      setAvailableTags(data || []);
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagInputRef.current && !tagInputRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!lead || lead.status === newStatus) {
+      setIsEditingStatus(false);
+      return;
+    }
+    const { error } = await supabase.from('leads').update({ status: newStatus }).eq('id', lead.id);
+    if (!error) {
+       setLead({ ...lead, status: newStatus as Lead['status'] });
+       setIsEditingStatus(false);
+    }
+  };
+
+  const handleTagAdd = async (tagName: string) => {
+    if (!lead) return;
+    const name = tagName.trim();
+    if (!name || lead.tags?.includes(name)) return;
+    
+    const newTags = [...(lead.tags || []), name];
+    setLead(prev => prev ? ({ ...prev, tags: newTags }) : null);
+    setTagInputText('');
+    
+    if (!availableTags.find(t => t.name.toLowerCase() === name.toLowerCase())) {
+      const newTag = { name, color: '#94a3b8' };
+      setAvailableTags(prev => [...prev, newTag]);
+      await supabase.from('crm_tags').insert([newTag]);
+    }
+    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id);
+  };
+
+  const handleTagRemove = async (tagName: string) => {
+    if (!lead) return;
+    const newTags = lead.tags?.filter(t => t !== tagName) || [];
+    setLead(prev => prev ? ({ ...prev, tags: newTags }) : null);
+    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id);
+  };
 
   const fetchLead = useCallback(async () => {
       if (!id) return;
@@ -304,9 +363,91 @@ export function LeadDetailPage() {
 
             <div className={styles.metaItem}>
               <span className={styles.metaLabel}>Status</span>
-              <span className={styles.metaValue}>
-                <span style={{ textTransform: 'capitalize' }}>{lead.status}</span>
+              <span className={styles.metaValue} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                 {isEditingStatus ? (
+                   <select 
+                     autoFocus
+                     value={lead.status} 
+                     onChange={(e) => handleStatusChange(e.target.value)}
+                     onBlur={() => setIsEditingStatus(false)}
+                     style={{ padding: '2px 4px', fontSize: '13px', borderRadius: '4px', border: '1px solid var(--color-border)', width: '100%' }}
+                   >
+                     <option value="open">Open</option>
+                     <option value="won">Won / Converted</option>
+                     <option value="lost">Lost</option>
+                     <option value="archived">Archived</option>
+                   </select>
+                 ) : (
+                   <>
+                     <span style={{ textTransform: 'capitalize' }}>{lead.status}</span>
+                     <button className={styles.iconBtn} onClick={() => setIsEditingStatus(true)} style={{ padding: '2px 4px', background: 'transparent', width: 'auto', height: 'auto', border: 'none', color: 'var(--color-primary)' }} title="Edit Status"><Pencil size={12} /></button>
+                   </>
+                 )}
               </span>
+            </div>
+
+            <div className={styles.metaItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px', borderBottom: 'none' }}>
+               <span className={styles.metaLabel} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                 Tags
+                 <button className={styles.iconBtn} onClick={() => setIsEditingTags(!isEditingTags)} style={{ padding: '2px 4px', background: 'transparent', width: 'auto', height: 'auto', border: 'none', color: isEditingTags ? 'var(--color-danger)' : 'var(--color-primary)' }} title={isEditingTags ? "Done" : "Manage Tags"}>{isEditingTags ? <Check size={12} /> : <Pencil size={12} />}</button>
+               </span>
+               <div style={{ width: '100%' }}>
+                  {lead.tags && lead.tags.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {lead.tags.map(tag => (
+                          <span key={tag} style={{ background: 'var(--color-bg-subtle)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', whiteSpace: 'nowrap', fontWeight: 500, display: 'flex', alignItems: 'center', gap: isEditingTags ? '4px' : '0' }}>
+                            {tag}
+                            {isEditingTags && (
+                              <button type="button" onClick={() => handleTagRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7, padding: 0, display: 'flex' }}>
+                                 <X size={10} />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                   ) : <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', fontStyle: 'italic' }}>No tags assigned</span>}
+                   
+                   {isEditingTags && (
+                     <div style={{ position: 'relative', marginTop: '8px' }} ref={tagInputRef}>
+                       <input
+                         type="text"
+                         value={tagInputText}
+                         onChange={e => { setTagInputText(e.target.value); setShowTagDropdown(true); }}
+                         onFocus={() => setShowTagDropdown(true)}
+                         onKeyDown={e => {
+                           if (e.key === 'Enter') {
+                             e.preventDefault();
+                             if (tagInputText.trim()) handleTagAdd(tagInputText);
+                           }
+                         }}
+                         placeholder="Type to add tags..."
+                         style={{ width: '100%', padding: '6px 8px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
+                       />
+                       {showTagDropdown && (tagInputText || availableTags.length > 0) && (
+                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', maxHeight: '160px', overflowY: 'auto', marginTop: '4px' }}>
+                           {tagInputText && !availableTags.find(t => t.name.toLowerCase() === tagInputText.toLowerCase()) && (
+                             <div 
+                               onClick={() => { handleTagAdd(tagInputText); setShowTagDropdown(false); }}
+                               style={{ padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent-blue)', fontSize: '12px', background: 'var(--color-bg-subtle)' }}
+                             >
+                               <Plus size={12} /> Create new tag "{tagInputText}"
+                             </div>
+                           )}
+                           {availableTags.filter(t => t.name.toLowerCase().includes(tagInputText.toLowerCase()) && !lead.tags?.includes(t.name)).map(tag => (
+                             <div 
+                               key={tag.name}
+                               onClick={() => { handleTagAdd(tag.name); setShowTagDropdown(false); }}
+                               style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}
+                             >
+                               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: tag.color }}></div>
+                               {tag.name}
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                     </div>
+                   )}
+               </div>
             </div>
           </div>
 

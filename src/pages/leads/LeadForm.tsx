@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, ChevronDown, User, FileText } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Plus, Trash2, ChevronDown, User, FileText, Check } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -32,6 +32,8 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     postal_code: '',
     how_heard: '',
     message: '',
+    tags: [] as string[],
+    status: 'open',
   });
 
   const [enquiry, setEnquiry] = useState({
@@ -58,6 +60,21 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
   const [stages, setStages] = useState<any[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [leadSourceOptions, setLeadSourceOptions] = useState<{ value: string; label: string }[]>([]);
+  
+  const [availableTags, setAvailableTags] = useState<{name: string, color: string}[]>([]);
+  const [tagInputText, setTagInputText] = useState('');
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const tagInputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagInputRef.current && !tagInputRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,6 +88,11 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
         setLeadSourceOptions((data || []).map(s => ({ value: s.name, label: s.name })));
       });
 
+      // Fetch CRM tags
+      supabase.from('crm_tags').select('name, color').order('name').then(({ data }) => {
+        setAvailableTags(data || []);
+      });
+
       if (currentMode === 'edit_contact' && lead) {
         setFormData({
           parent_name: lead.parent_name || '',
@@ -82,6 +104,8 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           postal_code: lead.postal_code || '',
           how_heard: lead.how_heard || lead.source || '',
           message: lead.message || '',
+          tags: lead.tags || [],
+          status: lead.status || 'open',
         });
         setStudents([]);
         setExpandedStudentId(null);
@@ -96,6 +120,8 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           postal_code: lead?.postal_code || '',
           how_heard: lead?.how_heard || '',
           message: lead?.message || '',
+          tags: lead?.tags || [],
+          status: lead?.status || 'open',
         });
         setEnquiry({ 
           enquiry_type: editingEnquiry.enquiry_type || '', 
@@ -114,7 +140,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
         setStudents(initialStudents);
         setExpandedStudentId(initialStudents[0].id);
       } else {
-        setFormData({ parent_name: '', email: '', phone: '', preferred_contact_method: '', address_line_1: '', city: '', postal_code: '', how_heard: '', message: '' });
+        setFormData({ parent_name: '', email: '', phone: '', preferred_contact_method: '', address_line_1: '', city: '', postal_code: '', how_heard: '', message: '', tags: [], status: 'open' });
         setEnquiry({ enquiry_type: '', message: '', pipeline_id: '', stage_id: '', owner_id: '', source: '', urgency: 'medium', preferred_start_date: '', lesson_frequency: '', lesson_format: '', notes: '' });
         const newId = Date.now().toString();
         setStudents([{ id: newId, first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }]);
@@ -174,6 +200,27 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     setStudents(prev => prev.filter(s => s.id !== id));
   };
 
+  const handleTagAdd = async (tagName: string) => {
+    const name = tagName.trim();
+    if (!name || formData.tags?.includes(name)) return;
+    
+    // Add to formData immediately for responsive UI
+    setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), name] }));
+    setTagInputText('');
+    
+    // Check if it exists in availableTags
+    if (!availableTags.find(t => t.name.toLowerCase() === name.toLowerCase())) {
+      // It's a new tag, create it in DB
+      const newTag = { name, color: '#94a3b8' }; // Default color
+      setAvailableTags(prev => [...prev, newTag]);
+      await supabase.from('crm_tags').insert([newTag]).select();
+    }
+  };
+
+  const handleTagRemove = (tagName: string) => {
+    setFormData(prev => ({ ...prev, tags: prev.tags?.filter(t => t !== tagName) }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -192,6 +239,8 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           how_heard: formData.how_heard || null,
           source: formData.how_heard || null,
           message: formData.message || null,
+          tags: formData.tags,
+          status: formData.status,
           updated_at: new Date().toISOString()
         }).eq('id', lead.id);
         if (error) throw error;
@@ -272,6 +321,8 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           source: formData.how_heard || null,
           message: formData.message || null,
           enquiry_type: enquiry.enquiry_type,
+          tags: formData.tags,
+          status: formData.status,
         }).select().single();
         if (leadError) throw leadError;
 
@@ -477,6 +528,66 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
                         value={formData.message}
                         onChange={e => setFormData({ ...formData, message: e.target.value })}
                       />
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div className={styles.fieldGroup}>
+                    <h3 className={styles.groupTitle}>Tags</h3>
+                    <div style={{ position: 'relative' }} ref={tagInputRef}>
+                      <div className={styles.textareaInput} style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '42px', alignItems: 'center', padding: '6px 12px' }}>
+                        {formData.tags?.map(tag => {
+                           const tagInfo = availableTags.find(t => t.name === tag);
+                           return (
+                             <span key={tag} style={{ background: tagInfo?.color ? `${tagInfo.color}22` : '#f1f5f9', color: tagInfo?.color || '#475569', border: `1px solid ${tagInfo?.color || '#cbd5e1'}`, padding: '2px 8px', borderRadius: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                               {tag}
+                               <button type="button" onClick={() => handleTagRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7, padding: 0, display: 'flex' }}>
+                                 <X size={10} />
+                               </button>
+                             </span>
+                           )
+                        })}
+                        <input
+                          type="text"
+                          value={tagInputText}
+                          onChange={e => { setTagInputText(e.target.value); setShowTagDropdown(true); }}
+                          onFocus={() => setShowTagDropdown(true)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (tagInputText.trim()) {
+                                handleTagAdd(tagInputText);
+                              }
+                            }
+                          }}
+                          placeholder={formData.tags?.length ? "Add another tag..." : "Type to create or search tags..."}
+                          style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, minWidth: '120px', fontSize: '14px' }}
+                        />
+                      </div>
+                      
+                      {showTagDropdown && (tagInputText || availableTags.length > 0) && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
+                          {tagInputText && !availableTags.find(t => t.name.toLowerCase() === tagInputText.toLowerCase()) && (
+                            <div 
+                              onClick={() => { handleTagAdd(tagInputText); setShowTagDropdown(false); }}
+                              style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent-blue)', fontSize: '14px', background: 'var(--color-bg-subtle)' }}
+                            >
+                              <Plus size={14} /> Create new tag "{tagInputText}"
+                            </div>
+                          )}
+                          {availableTags.filter(t => t.name.toLowerCase().includes(tagInputText.toLowerCase()) && !formData.tags?.includes(t.name)).map(tag => (
+                            <div 
+                              key={tag.name}
+                              onClick={() => { handleTagAdd(tag.name); setShowTagDropdown(false); }}
+                              style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}
+                              className={styles.dropdownItemHover}
+                            >
+                              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: tag.color }}></div>
+                              {tag.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 

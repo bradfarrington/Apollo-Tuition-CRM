@@ -312,4 +312,36 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+
+-- =============================================
+-- 7. CRM TAGS STRUCTURE
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS public.crm_tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#94a3b8',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.crm_tags ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'crm_tags' AND policyname = 'crm_tags_select_all') THEN
+    CREATE POLICY crm_tags_select_all ON public.crm_tags FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'crm_tags' AND policyname = 'crm_tags_insert_all') THEN
+    CREATE POLICY crm_tags_insert_all ON public.crm_tags FOR INSERT WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'crm_tags' AND policyname = 'crm_tags_update_all') THEN
+    CREATE POLICY crm_tags_update_all ON public.crm_tags FOR UPDATE USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'crm_tags' AND policyname = 'crm_tags_delete_all') THEN
+    CREATE POLICY crm_tags_delete_all ON public.crm_tags FOR DELETE USING (true);
+  END IF;
+END $$;
+
+ALTER TABLE public.leads 
+  ADD COLUMN IF NOT EXISTS tags text[] DEFAULT '{}'::text[];
+
 -- Done! All tables created, RLS policies applied, seed data inserted, and storage buckets configured.
