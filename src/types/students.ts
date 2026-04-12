@@ -6,9 +6,15 @@ export interface Student {
   first_name: string;
   last_name: string;
   date_of_birth: string | null;
+  gender: string | null;
   academic_cohort: number | null;
   school_year: string | null;
   key_stage: string | null;
+  school_name: string | null;
+  learning_needs: string | null;
+  goals: string | null;
+  availability: string | null;
+  medical_notes: string | null;
   status: StudentStatus;
   tutor_id: string | null;
   notes: string | null;

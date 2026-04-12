@@ -1,10 +1,15 @@
 export interface Lead {
   id: string;
   source?: string;
+  how_heard?: string;
   enquiry_type?: string;
   parent_name?: string;
   email?: string;
   phone?: string;
+  preferred_contact_method?: string;
+  address_line_1?: string;
+  city?: string;
+  postal_code?: string;
   message?: string;
   pipeline_id?: string;
   stage_id?: string;

@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ChevronRight, Edit2, ArrowRightCircle, Trash2, 
   MessageSquare, PhoneCall, Mail, CheckCircle2,
-  User, Calendar, Plus, Pencil, FileText, Briefcase
+  User, Calendar, Plus, Pencil, FileText, Briefcase,
+  MapPin, Heart
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
@@ -19,6 +20,7 @@ import styles from './LeadDetailPage.module.css';
 export function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'enquiries' | 'timeline' | 'communications' | 'documents'>('enquiries');
   const [lead, setLead] = useState<Lead | null>(null);
   const [enquiries, setEnquiries] = useState<any[]>([]);
@@ -54,7 +56,7 @@ export function LeadDetailPage() {
       // Fetch Enquiries
       const { data: enqData } = await supabase
         .from('enquiries')
-        .select('*')
+        .select('*, profiles!enquiries_owner_id_fkey(full_name)')
         .eq('lead_id', id)
         .order('created_at', { ascending: false });
         
@@ -73,6 +75,7 @@ export function LeadDetailPage() {
         
         setEnquiries(enqData.map((e: any) => ({
           ...e,
+          owner_name: e.profiles?.full_name || null,
           pipeline_card_id: pcMap[e.id]?.id,
           pipeline_id: pcMap[e.id]?.pipeline_id,
           stage_id: pcMap[e.id]?.stage_id,
@@ -90,6 +93,21 @@ export function LeadDetailPage() {
     fetchLead();
   }, [fetchLead]);
 
+  /* Auto-open enquiry sidebar when navigated from pipeline card click (fire once) */
+  const handledEnquiryRef = useRef<string | null>(null);
+  useEffect(() => {
+    const openEnquiryId = (location.state as any)?.openEnquiryId;
+    if (openEnquiryId && enquiries.length > 0 && handledEnquiryRef.current !== openEnquiryId) {
+      const target = enquiries.find((e: any) => e.id === openEnquiryId);
+      if (target) {
+        handledEnquiryRef.current = openEnquiryId;
+        setFormMode('edit_enquiry');
+        setEditingEnquiry(target);
+        setIsFormOpen(true);
+      }
+    }
+  }, [enquiries, location.state]);
+
   const handleFormClose = () => {
     setIsFormOpen(false);
     fetchLead();
@@ -104,13 +122,19 @@ export function LeadDetailPage() {
     if (!confirm('Are you sure you want to convert this enquiry into active Students and a Parent?')) return;
     
     try {
-      // 1. Create Parent record using the Lead's information
+      // 1. Create Parent record using the Lead's information (carry over enriched fields)
       const nameParts = lead?.parent_name?.split(' ') || ['Unknown'];
       const { data: parent, error: parentError } = await supabase.from('parents').insert({
         first_name: nameParts[0],
         last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
         email: lead?.email,
         phone: lead?.phone,
+        preferred_contact_method: lead?.preferred_contact_method || null,
+        address_line_1: lead?.address_line_1 || null,
+        city: lead?.city || null,
+        postal_code: lead?.postal_code || null,
+        how_heard: lead?.how_heard || lead?.source || null,
+        referral_source: lead?.source || null,
         status: 'onboarding'
       }).select().single();
       
@@ -125,11 +149,13 @@ export function LeadDetailPage() {
          const { data: newStudent, error: studentError } = await supabase.from('students').insert({
            first_name: stu.first_name,
            last_name: stu.last_name,
+           date_of_birth: stu.date_of_birth || null,
            status: 'onboarding',
            school_year: stu.year_group,
            key_stage: ks === 'N/A' ? null : ks,
            academic_cohort: cohort,
-           primary_parent_id: parent.id
+           primary_parent_id: parent.id,
+           notes: stu.notes || null
          }).select().single();
 
          if (studentError) { console.error('Error creating student:', studentError); continue; }
@@ -223,13 +249,12 @@ export function LeadDetailPage() {
 
           {/* Contact Information */}
           <div className={styles.contactFields}>
-            <div className={styles.contactFieldsLabel}>Contact Preferences</div>
+            <div className={styles.contactFieldsLabel}>Contact Information</div>
             
             <div className={styles.contactField}>
               <div className={styles.contactFieldIcon}><Mail size={14} /></div>
               <div className={styles.contactFieldText}>
                 <span>{lead.email || '-'}</span>
-                <span className={styles.contactFieldHint}>Email Account</span>
               </div>
             </div>
 
@@ -237,17 +262,28 @@ export function LeadDetailPage() {
               <div className={styles.contactFieldIcon}><PhoneCall size={14} /></div>
               <div className={styles.contactFieldText}>
                 <span>{lead.phone || '-'}</span>
-                <span className={styles.contactFieldHint}>Primary Phone</span>
               </div>
             </div>
-            
-            <div className={styles.contactField}>
-              <div className={styles.contactFieldIcon}><CheckCircle2 size={14} /></div>
-              <div className={styles.contactFieldText}>
-                <span>{lead.enquiry_type || '-'}</span>
-                <span className={styles.contactFieldHint}>Enquiry Type</span>
+
+            {lead.preferred_contact_method && (
+              <div className={styles.contactField}>
+                <div className={styles.contactFieldIcon}><Heart size={14} /></div>
+                <div className={styles.contactFieldText}>
+                  <span>{lead.preferred_contact_method.charAt(0).toUpperCase() + lead.preferred_contact_method.slice(1)}</span>
+                  <span className={styles.contactFieldHint}>Preferred Contact</span>
+                </div>
               </div>
-            </div>
+            )}
+
+            {(lead.address_line_1 || lead.city || lead.postal_code) && (
+              <div className={styles.contactField}>
+                <div className={styles.contactFieldIcon}><MapPin size={14} /></div>
+                <div className={styles.contactFieldText}>
+                  <span>{[lead.address_line_1, lead.city, lead.postal_code].filter(Boolean).join(', ')}</span>
+                  <span className={styles.contactFieldHint}>Location</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={styles.panelDivider} />
@@ -255,25 +291,21 @@ export function LeadDetailPage() {
           {/* Metadata */}
           <div className={styles.metadataSection}>
             <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Pipeline Stage</span>
-              <span className={styles.metaValue}>
-                {lead.pipeline_stage ? (
-                    <span style={{ backgroundColor: `${lead.pipeline_stage.color}20`, color: lead.pipeline_stage.color, padding: '2px 8px', borderRadius: '12px', fontSize: '12px' }}>
-                        {lead.pipeline_stage.name}
-                    </span>
-                ) : '-'}
-              </span>
-            </div>
-
-            <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Assigned Team Member</span>
-              <span className={styles.metaValue}>{lead.owner?.full_name || 'Unassigned'}</span>
+              <span className={styles.metaLabel}>How They Found Us</span>
+              <span className={styles.metaValue}>{lead.how_heard || lead.source || '-'}</span>
             </div>
             
             <div className={styles.metaItem}>
               <span className={styles.metaLabel}>Date Added</span>
               <span className={styles.metaValue}>
                 {new Date(lead.created_at).toLocaleDateString('en-GB')}
+              </span>
+            </div>
+
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Status</span>
+              <span className={styles.metaValue}>
+                <span style={{ textTransform: 'capitalize' }}>{lead.status}</span>
               </span>
             </div>
           </div>
@@ -382,8 +414,14 @@ export function LeadDetailPage() {
                              <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '14px' }}>
                                {enq.pipelines?.name || 'No Pipeline'} · <span style={{ color: 'var(--color-primary)' }}>{enq.pipeline_stages?.name || 'No Stage'}</span>
                              </div>
-                             <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
-                               Added {new Date(enq.created_at).toLocaleDateString()}
+                             <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                               <span>Added {new Date(enq.created_at).toLocaleDateString()}</span>
+                               {enq.owner_name && <span>· Assigned to <strong>{enq.owner_name}</strong></span>}
+                               {enq.urgency && enq.urgency !== 'medium' && (
+                                 <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '8px', background: enq.urgency === 'high' ? '#fef2f2' : '#f0fdf4', color: enq.urgency === 'high' ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                                   {enq.urgency === 'high' ? '🔴 High' : '🟢 Low'}
+                                 </span>
+                               )}
                              </div>
                           </div>
                           <span style={{ fontSize: '12px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8, fontWeight: 500, background: 'var(--color-primary-light)20', padding: '4px 8px', borderRadius: '12px' }}>

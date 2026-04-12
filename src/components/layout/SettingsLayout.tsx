@@ -4,6 +4,7 @@ import styles from './SettingsLayout.module.css';
 export function SettingsLayout() {
   const navItems = [
     { label: 'Subjects Offered', path: '/settings/subjects' },
+    { label: 'Lead Sources', path: '/settings/lead-sources' },
     { label: 'Pipelines', path: '/settings/pipelines' },
     { label: 'Custom Fields', path: '/settings/custom-fields' },
   ];

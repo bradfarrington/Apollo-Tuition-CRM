@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, ChevronDown, User } from 'lucide-react';
+import { X, Plus, Trash2, ChevronDown, User, FileText } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { DatePicker } from '../../components/ui/DatePicker';
 import { supabase } from '../../lib/supabase';
 import { useSubjects } from '../../contexts/SubjectsContext';
 import type { Lead } from '../../types/leads';
@@ -25,6 +26,12 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     parent_name: '',
     email: '',
     phone: '',
+    preferred_contact_method: '',
+    address_line_1: '',
+    city: '',
+    postal_code: '',
+    how_heard: '',
+    message: '',
   });
 
   const [enquiry, setEnquiry] = useState({
@@ -32,52 +39,85 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     message: '',
     pipeline_id: '',
     stage_id: '',
+    owner_id: '',
+    source: '',
+    urgency: 'medium',
+    preferred_start_date: '',
+    lesson_frequency: '',
+    lesson_format: '',
+    notes: '',
   });
 
   const [students, setStudents] = useState<any[]>([
-    { id: '1', first_name: '', last_name: '', year_group: '', subjects: [] }
+    { id: '1', first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }
   ]);
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>('1');
+  const [expandedSections, setExpandedSections] = useState({ contact: true, students: true, enquiry: true });
 
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [leadSourceOptions, setLeadSourceOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     if (isOpen) {
+      // Fetch team members for owner dropdown
+      supabase.from('profiles').select('id, full_name').order('full_name').then(({ data }) => {
+        setTeamMembers(data || []);
+      });
+
+      // Fetch lead sources for dropdown
+      supabase.from('lead_sources').select('name').eq('is_active', true).order('sort_order').then(({ data }) => {
+        setLeadSourceOptions((data || []).map(s => ({ value: s.name, label: s.name })));
+      });
+
       if (currentMode === 'edit_contact' && lead) {
         setFormData({
           parent_name: lead.parent_name || '',
           email: lead.email || '',
           phone: lead.phone || '',
-        });
-        setEnquiry({
-          enquiry_type: lead.enquiry_type || '',
+          preferred_contact_method: lead.preferred_contact_method || '',
+          address_line_1: lead.address_line_1 || '',
+          city: lead.city || '',
+          postal_code: lead.postal_code || '',
+          how_heard: lead.how_heard || lead.source || '',
           message: lead.message || '',
-          pipeline_id: '',
-          stage_id: '',
         });
-        setStudents([]); // Hide students when just editing lead contact
+        setStudents([]);
         setExpandedStudentId(null);
       } else if (currentMode === 'edit_enquiry' && editingEnquiry) {
         setFormData({
           parent_name: lead?.parent_name || '',
           email: lead?.email || '',
           phone: lead?.phone || '',
+          preferred_contact_method: lead?.preferred_contact_method || '',
+          address_line_1: lead?.address_line_1 || '',
+          city: lead?.city || '',
+          postal_code: lead?.postal_code || '',
+          how_heard: lead?.how_heard || '',
+          message: lead?.message || '',
         });
         setEnquiry({ 
           enquiry_type: editingEnquiry.enquiry_type || '', 
           message: editingEnquiry.message || '', 
           pipeline_id: editingEnquiry.pipeline_id || '', 
-          stage_id: editingEnquiry.stage_id || '' 
+          stage_id: editingEnquiry.stage_id || '',
+          owner_id: editingEnquiry.owner_id || '',
+          source: editingEnquiry.source || '',
+          urgency: editingEnquiry.urgency || 'medium',
+          preferred_start_date: editingEnquiry.preferred_start_date || '',
+          lesson_frequency: editingEnquiry.lesson_frequency || '',
+          lesson_format: editingEnquiry.lesson_format || '',
+          notes: editingEnquiry.notes || '',
         });
-        const initialStudents = editingEnquiry.students && editingEnquiry.students.length > 0 ? editingEnquiry.students : [{ id: Date.now().toString(), first_name: '', last_name: '', year_group: '', subjects: [] }];
+        const initialStudents = editingEnquiry.students && editingEnquiry.students.length > 0 ? editingEnquiry.students : [{ id: Date.now().toString(), first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }];
         setStudents(initialStudents);
         setExpandedStudentId(initialStudents[0].id);
       } else {
-        setFormData({ parent_name: '', email: '', phone: '' });
-        setEnquiry({ enquiry_type: '', message: '', pipeline_id: '', stage_id: '' });
+        setFormData({ parent_name: '', email: '', phone: '', preferred_contact_method: '', address_line_1: '', city: '', postal_code: '', how_heard: '', message: '' });
+        setEnquiry({ enquiry_type: '', message: '', pipeline_id: '', stage_id: '', owner_id: '', source: '', urgency: 'medium', preferred_start_date: '', lesson_frequency: '', lesson_format: '', notes: '' });
         const newId = Date.now().toString();
-        setStudents([{ id: newId, first_name: '', last_name: '', year_group: '', subjects: [] }]);
+        setStudents([{ id: newId, first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }]);
         setExpandedStudentId(newId);
       }
 
@@ -126,7 +166,7 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
 
   const addStudent = () => {
     const newId = Date.now().toString();
-    setStudents(prev => [...prev, { id: newId, first_name: '', last_name: '', year_group: '', subjects: [] }]);
+    setStudents(prev => [...prev, { id: newId, first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }]);
     setExpandedStudentId(newId);
   };
 
@@ -140,9 +180,19 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
 
     try {
       if (currentMode === 'edit_contact' && lead) {
-        // Just update contact details
+        // Update lead contact details
         const { error } = await supabase.from('leads').update({
-          ...formData, updated_at: new Date().toISOString()
+          parent_name: formData.parent_name,
+          email: formData.email,
+          phone: formData.phone,
+          preferred_contact_method: formData.preferred_contact_method || null,
+          address_line_1: formData.address_line_1 || null,
+          city: formData.city || null,
+          postal_code: formData.postal_code || null,
+          how_heard: formData.how_heard || null,
+          source: formData.how_heard || null,
+          message: formData.message || null,
+          updated_at: new Date().toISOString()
         }).eq('id', lead.id);
         if (error) throw error;
       } else if (currentMode === 'add_enquiry' && lead) {
@@ -152,6 +202,13 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           enquiry_type: enquiry.enquiry_type,
           message: enquiry.message,
           students: students,
+          owner_id: enquiry.owner_id || null,
+          source: enquiry.source || null,
+          urgency: enquiry.urgency || 'medium',
+          preferred_start_date: enquiry.preferred_start_date || null,
+          lesson_frequency: enquiry.lesson_frequency || null,
+          lesson_format: enquiry.lesson_format || null,
+          notes: enquiry.notes || null,
         }).select().single();
         if (enqError) throw enqError;
 
@@ -170,6 +227,13 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           enquiry_type: enquiry.enquiry_type,
           message: enquiry.message,
           students: students,
+          owner_id: enquiry.owner_id || null,
+          source: enquiry.source || null,
+          urgency: enquiry.urgency || 'medium',
+          preferred_start_date: enquiry.preferred_start_date || null,
+          lesson_frequency: enquiry.lesson_frequency || null,
+          lesson_format: enquiry.lesson_format || null,
+          notes: enquiry.notes || null,
         }).eq('id', editingEnquiry.id);
         if (enqError) throw enqError;
 
@@ -195,24 +259,39 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
            }
         }
       } else {
-        // Create new Lead
+        // Create new Lead + auto-create first Enquiry
         const { data: leadData, error: leadError } = await supabase.from('leads').insert({
-          ...formData,
+          parent_name: formData.parent_name,
+          email: formData.email,
+          phone: formData.phone,
+          preferred_contact_method: formData.preferred_contact_method || null,
+          address_line_1: formData.address_line_1 || null,
+          city: formData.city || null,
+          postal_code: formData.postal_code || null,
+          how_heard: formData.how_heard || null,
+          source: formData.how_heard || null,
+          message: formData.message || null,
           enquiry_type: enquiry.enquiry_type,
-          message: enquiry.message
         }).select().single();
         if (leadError) throw leadError;
 
-        // Create new Enquiry
+        // Create first Enquiry
         const { data: enquiryData, error: enqError } = await supabase.from('enquiries').insert({
           lead_id: leadData.id,
           enquiry_type: enquiry.enquiry_type,
           message: enquiry.message,
           students: students,
+          owner_id: enquiry.owner_id || null,
+          source: enquiry.source || null,
+          urgency: enquiry.urgency || 'medium',
+          preferred_start_date: enquiry.preferred_start_date || null,
+          lesson_frequency: enquiry.lesson_frequency || null,
+          lesson_format: enquiry.lesson_format || null,
+          notes: enquiry.notes || null,
         }).select().single();
         if (enqError) throw enqError;
 
-        // Place on Kanban board if pipeline is selected
+        // Place on Kanban board
         if (enquiry.pipeline_id && enquiry.stage_id) {
            const { error: pcError } = await supabase.from('pipeline_cards').insert({
              pipeline_id: enquiry.pipeline_id,
@@ -243,120 +322,269 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
 
         <form className={styles.form} id="enquiry-form" onSubmit={handleSubmit}>
           
+          {/* ========== CONTACT DETAILS ========== */}
           {currentMode !== 'add_enquiry' && currentMode !== 'edit_enquiry' && (
-            <div className={styles.fieldGroup}>
-              <h3 className={styles.groupTitle}>Contact Details (Parent/Guardian)</h3>
-              <div>
-                <label className={styles.label}>Full Name *</label>
-                <Input 
-                  required 
-                  value={formData.parent_name}
-                  onChange={e => setFormData({ ...formData, parent_name: e.target.value })}
-                  fullWidth
-                />
-              </div>
-              <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
-                <div>
-                  <label className={styles.label}>Email Address</label>
-                  <Input 
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    fullWidth
-                  />
+            <div style={{ 
+              background: expandedSections.contact ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
+              border: `1px solid ${expandedSections.contact ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
+              borderRadius: 'var(--radius-lg)', 
+              marginBottom: '24px', 
+              boxShadow: expandedSections.contact ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
+              transition: 'all 0.2s ease'
+            }}>
+              {/* Collapsible Header */}
+              <div 
+                onClick={() => setExpandedSections(prev => ({ ...prev, contact: !prev.contact }))}
+                style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '40px', height: '40px', borderRadius: '50%', 
+                    background: expandedSections.contact ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
+                    border: `1px solid ${expandedSections.contact ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: expandedSections.contact ? 'white' : 'var(--color-accent-primary)',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
+                  }}>
+                    <User size={18} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Parent / Guardian
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
+                      Contact Details
+                    </div>
+                    {!expandedSections.contact && (formData.parent_name || formData.email) && (
+                       <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
+                          {formData.parent_name} {formData.parent_name && formData.email && '•'} {formData.email}
+                       </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className={styles.label}>Phone Number</label>
-                  <Input 
-                    type="tel"
-                    value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                    fullWidth
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: expandedSections.contact ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                 </div>
               </div>
+
+              {/* Accordion Body */}
+              {expandedSections.contact && (
+                <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                  
+                  {/* Basic Information */}
+                  <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+                    <h3 className={styles.groupTitle}>Basic Information</h3>
+                    <div>
+                      <label className={styles.label}>Full Name *</label>
+                      <Input 
+                        required 
+                        value={formData.parent_name}
+                        onChange={e => setFormData({ ...formData, parent_name: e.target.value })}
+                        fullWidth
+                      />
+                    </div>
+                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                      <div>
+                        <label className={styles.label}>Email Address</label>
+                        <Input 
+                          type="email"
+                          value={formData.email}
+                          onChange={e => setFormData({ ...formData, email: e.target.value })}
+                          fullWidth
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Phone Number</label>
+                        <Input 
+                          type="tel"
+                          value={formData.phone}
+                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                          fullWidth
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                      <div>
+                        <label className={styles.label}>Preferred Contact Method</label>
+                        <Select 
+                          value={formData.preferred_contact_method}
+                          onChange={val => setFormData({ ...formData, preferred_contact_method: val })}
+                          options={[
+                            { value: '', label: 'Select...' },
+                            { value: 'email', label: 'Email' },
+                            { value: 'phone', label: 'Phone' },
+                            { value: 'whatsapp', label: 'WhatsApp' },
+                            { value: 'sms', label: 'SMS' }
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>How Did They Hear About Us?</label>
+                        <Select 
+                          value={formData.how_heard}
+                          onChange={val => setFormData({ ...formData, how_heard: val })}
+                          options={[
+                            { value: '', label: 'Select...' },
+                            ...leadSourceOptions
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className={styles.fieldGroup}>
+                    <h3 className={styles.groupTitle}>Address</h3>
+                    <div>
+                      <label className={styles.label}>Address Line 1</label>
+                      <Input 
+                        value={formData.address_line_1}
+                        onChange={e => setFormData({ ...formData, address_line_1: e.target.value })}
+                        placeholder="123 Street Name"
+                        fullWidth
+                      />
+                    </div>
+                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                      <div>
+                        <label className={styles.label}>Town/City</label>
+                        <Input 
+                          value={formData.city}
+                          onChange={e => setFormData({ ...formData, city: e.target.value })}
+                          fullWidth
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Postal Code</label>
+                        <Input 
+                          value={formData.postal_code}
+                          onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
+                          placeholder="SW1A 1AA"
+                          fullWidth
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className={styles.fieldGroup}>
+                    <h3 className={styles.groupTitle}>Notes</h3>
+                    <div>
+                      <label className={styles.label}>Initial Message / Notes</label>
+                      <textarea 
+                        className={styles.textareaInput} 
+                        placeholder="Any notes about this contact..."
+                        value={formData.message}
+                        onChange={e => setFormData({ ...formData, message: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              )}
             </div>
           )}
 
+          {/* ========== STUDENT DETAILS ========== */}
           {currentMode !== 'edit_contact' && (
-            <>
-              <div className={styles.fieldGroup}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 className={styles.groupTitle} style={{ margin: 0 }}>Student Details</h3>
-                  <button type="button" onClick={addStudent} style={{ color: 'var(--color-primary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
-                    <Plus size={14} /> Add Student
-                  </button>
-                </div>
-                
-                {students.map((student, index) => {
-                  const isExpanded = expandedStudentId === student.id;
-                  return (
-                  <div key={student.id} style={{ 
-                    background: isExpanded ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
-                    border: `1px solid ${isExpanded ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
-                    borderRadius: 'var(--radius-lg)', 
-                    marginBottom: '16px', 
-                    boxShadow: isExpanded ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
-                    overflow: 'hidden',
-                    transition: 'all 0.2s ease'
+            <div style={{ 
+              background: expandedSections.students ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
+              border: `1px solid ${expandedSections.students ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
+              borderRadius: 'var(--radius-lg)', 
+              marginBottom: '24px', 
+              boxShadow: expandedSections.students ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
+              transition: 'all 0.2s ease'
+            }}>
+              {/* Collapsible Header */}
+              <div 
+                onClick={() => setExpandedSections(prev => ({ ...prev, students: !prev.students }))}
+                style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '40px', height: '40px', borderRadius: '50%', 
+                    background: expandedSections.students ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
+                    border: `1px solid ${expandedSections.students ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: expandedSections.students ? 'white' : 'var(--color-accent-primary)',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
                   }}>
-                    {/* Collapsible Header */}
-                    <div 
-                      onClick={() => setExpandedStudentId(isExpanded ? null : student.id)}
-                      style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        {/* Avatar */}
-                        <div style={{ 
-                          width: '40px', height: '40px', borderRadius: '50%', 
-                          background: isExpanded ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
-                          border: `1px solid ${isExpanded ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: isExpanded ? 'white' : 'var(--color-accent-primary)',
-                          transition: 'all 0.2s ease',
-                          flexShrink: 0
-                        }}>
-                          <User size={18} />
-                        </div>
-                        {/* Info */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                         <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Student {index + 1}
-                         </div>
-                         <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {student.first_name || student.last_name ? `${student.first_name} ${student.last_name}` : 'New Student'}
-                         </div>
-                         {!isExpanded && (student.year_group || student.subjects?.length > 0) && (
-                           <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
-                              {student.year_group} {student.year_group && student.subjects?.length > 0 && '•'} {student.subjects?.join(', ')}
-                           </div>
-                         )}
-                      </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {students.length > 1 && (
-                          <button type="button" onClick={(e) => { e.stopPropagation(); removeStudent(student.id); }} style={{ color: 'var(--color-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                        <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                      </div>
+                    <User size={18} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Students
                     </div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
+                      Student List
+                    </div>
+                    {!expandedSections.students && (
+                       <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
+                          {students.length} Student{students.length !== 1 ? 's' : ''}
+                       </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: expandedSections.students ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                </div>
+              </div>
 
-                    {/* Accordion Body */}
-                    {isExpanded && (
-                      <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                        <div className={styles.row} style={{ marginTop: '16px' }}>
-                          <div>
-                            <label className={styles.label}>First Name</label>
-                            <Input value={student.first_name} onChange={e => handleStudentChange(student.id, 'first_name', e.target.value)} fullWidth />
-                          </div>
-                          <div>
-                            <label className={styles.label}>Last Name</label>
-                            <Input value={student.last_name} onChange={e => handleStudentChange(student.id, 'last_name', e.target.value)} fullWidth />
-                          </div>
+              {/* Accordion Body */}
+              {expandedSections.students && (
+                <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                  {students.map((student, index) => {
+                    const isInnerExpanded = expandedStudentId === student.id;
+                    return (
+                    <div key={student.id} style={{
+                      marginTop: '16px', 
+                      background: 'var(--color-bg-surface)', 
+                      border: `1px solid ${isInnerExpanded ? 'var(--color-border-strong, #cbd5e1)' : 'var(--color-border-subtle)'}`, 
+                      boxShadow: isInnerExpanded ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                      borderRadius: 'var(--radius-md)', 
+                      transition: 'all 0.2s ease',
+                      overflow: 'hidden'
+                    }}>
+                      <div 
+                        onClick={() => setExpandedStudentId(isInnerExpanded ? null : student.id)}
+                        style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isInnerExpanded ? 'transparent' : 'var(--color-bg-surface)' }}
+                      >
+                        <h3 className={styles.groupTitle} style={{ margin: 0, color: isInnerExpanded ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
+                           {student.first_name || student.last_name ? `${student.first_name} ${student.last_name}`.trim() : `New Student ${index + 1}`}
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {students.length > 1 && (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); removeStudent(student.id); }} style={{ color: 'var(--color-danger)', fontSize: '12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Trash2 size={14} /> Remove
+                            </button>
+                          )}
+                          <ChevronDown size={18} style={{ color: 'var(--color-text-tertiary)', transform: isInnerExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                         </div>
-                        <div style={{ marginTop: '12px' }}>
+                      </div>
+                      
+                      {isInnerExpanded && (
+                      <div style={{ padding: '16px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                      <div className={styles.row}>
+                        <div>
+                          <label className={styles.label}>First Name</label>
+                          <Input value={student.first_name} onChange={e => handleStudentChange(student.id, 'first_name', e.target.value)} fullWidth />
+                        </div>
+                        <div>
+                          <label className={styles.label}>Last Name</label>
+                          <Input value={student.last_name} onChange={e => handleStudentChange(student.id, 'last_name', e.target.value)} fullWidth />
+                        </div>
+                      </div>
+                      
+                      <div className={styles.row} style={{ marginTop: '12px' }}>
+                        <div>
+                          <label className={styles.label}>Date of Birth</label>
+                          <DatePicker 
+                            value={student.date_of_birth || ''}
+                            onChange={(val: string) => handleStudentChange(student.id, 'date_of_birth', val)}
+                          />
+                        </div>
+                        <div>
                           <label className={styles.label}>School Year</label>
                           <Select 
                             value={student.year_group}
@@ -376,76 +604,279 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
                             ]}
                           />
                         </div>
-                        <div style={{ marginTop: '12px' }}>
-                          <label className={styles.label}>Subjects Required</label>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                             {activeSubjects.map(sub => {
-                               const isSelected = student.subjects.includes(sub.name);
-                               return (
-                                 <button
-                                   key={sub.id}
-                                   type="button"
-                                   onClick={() => handleSubjectToggle(student.id, sub.name)}
-                                   style={{
-                                     padding: '6px 12px',
-                                     borderRadius: '100px',
-                                     fontSize: '13px',
-                                     border: `1px solid ${isSelected ? sub.colour : 'var(--color-border)'}`,
-                                     backgroundColor: isSelected ? `${sub.colour}22` : 'var(--color-background)',
-                                     color: isSelected ? sub.colour : 'var(--color-text-secondary)',
-                                     cursor: 'pointer',
-                                     transition: 'all 0.2s ease',
-                                   }}
-                                 >
-                                   {sub.name}
-                                 </button>
-                               );
-                             })}
-                          </div>
+                      </div>
+                      
+                      <div style={{ marginTop: '12px' }}>
+                        <label className={styles.label}>Subjects Required</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                           {activeSubjects.map(sub => {
+                             const isSelected = student.subjects.includes(sub.name);
+                             return (
+                               <button
+                                 key={sub.id}
+                                 type="button"
+                                 onClick={() => handleSubjectToggle(student.id, sub.name)}
+                                 style={{
+                                   padding: '6px 12px',
+                                   borderRadius: '100px',
+                                   fontSize: '13px',
+                                   border: `1px solid ${isSelected ? sub.colour : 'var(--color-border)'}`,
+                                   backgroundColor: isSelected ? `${sub.colour}22` : 'var(--color-background)',
+                                   color: isSelected ? sub.colour : 'var(--color-text-secondary)',
+                                   cursor: 'pointer',
+                                   transition: 'all 0.2s ease',
+                                 }}
+                               >
+                                 {sub.name}
+                               </button>
+                             );
+                           })}
                         </div>
                       </div>
+                      
+                      <div style={{ marginTop: '16px' }}>
+                        <label className={styles.label}>Student Profile Notes</label>
+                        <textarea 
+                          className={styles.textareaInput} 
+                          placeholder="Any specific details for this student? (e.g. SEN requirements, current grades...)"
+                          value={student.notes || ''}
+                          onChange={(e) => handleStudentChange(student.id, 'notes', e.target.value)}
+                          style={{ minHeight: '80px' }}
+                        />
+                      </div>
+                      
+                      </div>
+                      )}
+                    </div>
+                  )})}
+
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                    <button type="button" onClick={addStudent} style={{ color: 'var(--color-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-background-elevated)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 20px', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s' }}>
+                      <Plus size={16} /> Add Another Student
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========== ENQUIRY DETAILS ========== */}
+          {currentMode !== 'edit_contact' && (
+            <div style={{ 
+              background: expandedSections.enquiry ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
+              border: `1px solid ${expandedSections.enquiry ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
+              borderRadius: 'var(--radius-lg)', 
+              marginBottom: '24px', 
+              boxShadow: expandedSections.enquiry ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
+              transition: 'all 0.2s ease'
+            }}>
+              {/* Collapsible Header */}
+              <div 
+                onClick={() => setExpandedSections(prev => ({ ...prev, enquiry: !prev.enquiry }))}
+                style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '40px', height: '40px', borderRadius: '50%', 
+                    background: expandedSections.enquiry ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
+                    border: `1px solid ${expandedSections.enquiry ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: expandedSections.enquiry ? 'white' : 'var(--color-accent-primary)',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
+                  }}>
+                    <FileText size={18} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Enquiry
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
+                      Details & Preferences
+                    </div>
+                    {!expandedSections.enquiry && enquiry.enquiry_type && (
+                       <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
+                          {enquiry.enquiry_type}
+                       </div>
                     )}
                   </div>
-                )})}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: expandedSections.enquiry ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                </div>
               </div>
 
-              <div className={styles.fieldGroup}>
-                <h3 className={styles.groupTitle}>Enquiry Details</h3>
-                <div className={styles.row} style={{ marginBottom: '16px' }}>
-                  <div>
-                    <label className={styles.label}>Pipeline</label>
-                    <Select 
-                      value={enquiry.pipeline_id}
-                      onChange={val => setEnquiry({ ...enquiry, pipeline_id: val, stage_id: '' })}
-                      options={[
-                        { value: '', label: 'Select Pipeline...' },
-                        ...pipelines.map(p => ({ value: p.id, label: p.name }))
-                      ]}
-                    />
+              {/* Accordion Body */}
+              {expandedSections.enquiry && (
+                <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                  
+                  {/* Pipeline & Assignment */}
+                  <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+                    <h3 className={styles.groupTitle}>Pipeline & Assignment</h3>
+                    <div className={styles.row}>
+                      <div>
+                        <label className={styles.label}>Pipeline</label>
+                        <Select 
+                          value={enquiry.pipeline_id}
+                          onChange={val => setEnquiry({ ...enquiry, pipeline_id: val, stage_id: '' })}
+                          options={[
+                            { value: '', label: 'Select Pipeline...' },
+                            ...pipelines.map(p => ({ value: p.id, label: p.name }))
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Stage</label>
+                        <Select 
+                          value={enquiry.stage_id}
+                          onChange={val => setEnquiry({ ...enquiry, stage_id: val })}
+                          options={[
+                            { value: '', label: 'Select Stage...' },
+                            ...stages.map(s => ({ value: s.id, label: s.name }))
+                          ]}
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                      <div>
+                        <label className={styles.label}>Assigned Team Member</label>
+                        <Select 
+                          value={enquiry.owner_id}
+                          onChange={val => setEnquiry({ ...enquiry, owner_id: val })}
+                          options={[
+                            { value: '', label: 'Unassigned' },
+                            ...teamMembers.map(tm => ({ value: tm.id, label: tm.full_name }))
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Enquiry Type</label>
+                        <Select 
+                          value={enquiry.enquiry_type}
+                          onChange={val => setEnquiry({ ...enquiry, enquiry_type: val })}
+                          options={[
+                            { value: '', label: 'Select Type...' },
+                            { value: 'New Tuition', label: 'New Tuition' },
+                            { value: 'Additional Subject', label: 'Additional Subject' },
+                            { value: 'Group Tuition', label: 'Group Tuition' },
+                            { value: 'Exam Prep', label: 'Exam Prep' },
+                            { value: 'Holiday Intensive', label: 'Holiday Intensive' },
+                            { value: 'Assessment', label: 'Assessment' },
+                            { value: 'Other', label: 'Other' }
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className={styles.label}>Stage</label>
-                    <Select 
-                      value={enquiry.stage_id}
-                      onChange={val => setEnquiry({ ...enquiry, stage_id: val })}
-                      options={[
-                        { value: '', label: 'Select Stage...' },
-                        ...stages.map(s => ({ value: s.id, label: s.name }))
-                      ]}
-                    />
+
+                  {/* Source & Urgency */}
+                  <div className={styles.fieldGroup}>
+                    <h3 className={styles.groupTitle}>Source & Urgency</h3>
+                    <div className={styles.row}>
+                      <div>
+                        <label className={styles.label}>Enquiry Source</label>
+                        <Select 
+                          value={enquiry.source}
+                          onChange={val => setEnquiry({ ...enquiry, source: val })}
+                          options={[
+                            { value: '', label: 'Select...' },
+                            { value: 'Phone Call', label: 'Phone Call' },
+                            { value: 'Email', label: 'Email' },
+                            { value: 'Website Form', label: 'Website Form' },
+                            { value: 'WhatsApp', label: 'WhatsApp' },
+                            { value: 'Walk-in', label: 'Walk-in' },
+                            { value: 'Referral', label: 'Referral' },
+                            { value: 'Social Media', label: 'Social Media' },
+                            { value: 'Other', label: 'Other' }
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Urgency</label>
+                        <Select 
+                          value={enquiry.urgency}
+                          onChange={val => setEnquiry({ ...enquiry, urgency: val })}
+                          options={[
+                            { value: 'low', label: '🟢 Low' },
+                            { value: 'medium', label: '🟡 Medium' },
+                            { value: 'high', label: '🔴 High' }
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Lesson Preferences */}
+                  <div className={styles.fieldGroup}>
+                    <h3 className={styles.groupTitle}>Lesson Preferences</h3>
+                    <div className={styles.row}>
+                      <div>
+                        <label className={styles.label}>Preferred Start Date</label>
+                        <DatePicker 
+                          id="preferred_start_date"
+                          defaultValue={enquiry.preferred_start_date}
+                          onChange={(val: string) => setEnquiry({ ...enquiry, preferred_start_date: val })}
+                        />
+                      </div>
+                      <div>
+                        <label className={styles.label}>Lesson Frequency</label>
+                        <Select 
+                          value={enquiry.lesson_frequency}
+                          onChange={val => setEnquiry({ ...enquiry, lesson_frequency: val })}
+                          options={[
+                            { value: '', label: 'Select...' },
+                            { value: 'Once a week', label: 'Once a week' },
+                            { value: 'Twice a week', label: 'Twice a week' },
+                            { value: '3+ times a week', label: '3+ times a week' },
+                            { value: 'Fortnightly', label: 'Fortnightly' },
+                            { value: 'Intensive / Block', label: 'Intensive / Block' },
+                            { value: 'Ad hoc', label: 'Ad hoc / As needed' }
+                          ]}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 'var(--spacing-md)' }}>
+                      <label className={styles.label}>Lesson Format</label>
+                      <Select 
+                        value={enquiry.lesson_format}
+                        onChange={val => setEnquiry({ ...enquiry, lesson_format: val })}
+                        options={[
+                          { value: '', label: 'Select...' },
+                          { value: 'Online', label: 'Online' },
+                          { value: 'In-person', label: 'In-person (at student\'s home)' },
+                          { value: 'Centre-based', label: 'Centre-based' },
+                          { value: 'Hybrid', label: 'Hybrid (mix of online & in-person)' }
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className={styles.fieldGroup}>
+                    <h3 className={styles.groupTitle}>Notes</h3>
+                    <div>
+                      <label className={styles.label}>Parent's Message</label>
+                      <textarea 
+                        className={styles.textareaInput} 
+                        placeholder="What the parent told you about their requirements..."
+                        value={enquiry.message}
+                        onChange={e => setEnquiry({ ...enquiry, message: e.target.value })}
+                      />
+                    </div>
+                    <div style={{ marginTop: 'var(--spacing-md)' }}>
+                      <label className={styles.label}>Internal Notes</label>
+                      <textarea 
+                        className={styles.textareaInput} 
+                        placeholder="Team-only notes about this enquiry..."
+                        value={enquiry.notes}
+                        onChange={e => setEnquiry({ ...enquiry, notes: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
                 </div>
-                <div>
-                  <label className={styles.label}>Initial Message / Notes</label>
-                  <textarea 
-                    className={styles.textareaInput} 
-                    placeholder="Details about availability, specific goals, etc..."
-                    value={enquiry.message}
-                    onChange={e => setEnquiry({ ...enquiry, message: e.target.value })}
-                  />
-                </div>
-              </div>
-            </>
+              )}
+            </div>
           )}
 
         </form>

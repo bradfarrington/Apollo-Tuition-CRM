@@ -21,6 +21,7 @@ import { PipelinesListPage } from './pages/settings/pipelines/PipelinesListPage'
 import { PipelineDetailPage } from './pages/settings/pipelines/PipelineDetailPage';
 import { CustomFieldsListPage } from './pages/settings/custom-fields/CustomFieldsListPage';
 import { SubjectsSettingsPage } from './pages/settings/subjects/SubjectsSettingsPage';
+import { LeadSourcesSettingsPage } from './pages/settings/lead-sources/LeadSourcesSettingsPage';
 import { OnboardingSubmissionsPage } from './pages/onboarding/OnboardingSubmissionsPage';
 import { OnboardingReviewPage } from './pages/onboarding/OnboardingReviewPage';
 
@@ -59,6 +60,7 @@ function App() {
             <Route path="pipelines/:id" element={<PipelineDetailPage />} />
             <Route path="custom-fields" element={<CustomFieldsListPage />} />
             <Route path="subjects" element={<SubjectsSettingsPage />} />
+            <Route path="lead-sources" element={<LeadSourcesSettingsPage />} />
           </Route>
           
           {/* Fallback route */}

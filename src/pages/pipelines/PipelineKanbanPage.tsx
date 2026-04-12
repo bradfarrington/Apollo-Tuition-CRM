@@ -266,8 +266,16 @@ export function PipelineKanbanPage() {
   };
 
   const handleCardClick = (card: PipelineCard) => {
+    if (card.entity_type === 'enquiry') {
+      // Enquiries live under their parent lead – navigate to the lead and
+      // pass the enquiry id so the sidebar auto-opens for that enquiry.
+      const leadId = card.entity_data?.lead_id;
+      if (leadId) {
+        navigate(`/leads/${leadId}`, { state: { openEnquiryId: card.entity_id } });
+      }
+      return;
+    }
     const routes: Record<string, string> = {
-      enquiry: '/leads', // enquiries are grouped under the Lead's detail page
       lead: '/leads',
       parent: '/parents',
       student: '/students',

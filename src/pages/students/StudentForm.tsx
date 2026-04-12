@@ -32,6 +32,14 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
   const [parentOptions, setParentOptions] = useState<{ value: string; label: string }[]>([]);
   const [tutorOptions, setTutorOptions] = useState<{ value: string; label: string }[]>([]);
 
+  // New enriched fields
+  const [gender, setGender] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [learningNeeds, setLearningNeeds] = useState('');
+  const [goals, setGoals] = useState('');
+  const [availability, setAvailability] = useState('');
+  const [medicalNotes, setMedicalNotes] = useState('');
+
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
@@ -45,6 +53,14 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
          setSchoolYear(initialData?.school_year || '');
          setKeyStage(initialData?.key_stage || '');
       }
+
+      // Set new fields
+      setGender(initialData?.gender || '');
+      setSchoolName(initialData?.school_name || '');
+      setLearningNeeds(initialData?.learning_needs || '');
+      setGoals(initialData?.goals || '');
+      setAvailability(initialData?.availability || '');
+      setMedicalNotes(initialData?.medical_notes || '');
 
       // Fetch parents and tutors for dropdowns
       supabase.from('parents').select('id, first_name, last_name').order('first_name').then(({ data }) => {
@@ -90,6 +106,12 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
       academic_cohort: cohort,
       primary_parent_id: getValue('primary_parent_id') || null,
       tutor_id: getValue('tutor_id') || null,
+      gender: gender || null,
+      school_name: schoolName || null,
+      learning_needs: learningNeeds || null,
+      goals: goals || null,
+      availability: availability || null,
+      medical_notes: medicalNotes || null,
     };
 
     setSaving(true);
@@ -152,79 +174,113 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
         </div>
 
         <div className={styles.form}>
-          <div className={styles.row}>
-            <div>
-              <label htmlFor="first_name" className={styles.label}>First Name *</label>
-              <Input id="first_name" placeholder="E.g. Emily" defaultValue={initialData?.first_name} required />
+          {/* Personal Details */}
+          <div className={styles.fieldGroup}>
+            <h3 className={styles.groupTitle}>Personal Details</h3>
+            <div className={styles.row}>
+              <div>
+                <label htmlFor="first_name" className={styles.label}>First Name *</label>
+                <Input id="first_name" placeholder="E.g. Emily" defaultValue={initialData?.first_name} required />
+              </div>
+              <div>
+                <label htmlFor="last_name" className={styles.label}>Last Name *</label>
+                <Input id="last_name" placeholder="E.g. Smith" defaultValue={initialData?.last_name} required />
+              </div>
             </div>
-            <div>
-              <label htmlFor="last_name" className={styles.label}>Last Name *</label>
-              <Input id="last_name" placeholder="E.g. Smith" defaultValue={initialData?.last_name} required />
+
+            <div className={styles.row}>
+              <div>
+                <label htmlFor="date_of_birth" className={styles.label}>Date of Birth</label>
+                <DatePicker 
+                  id="date_of_birth" 
+                  defaultValue={initialData?.date_of_birth || ''} 
+                />
+              </div>
+              <div>
+                <label className={styles.label}>Gender</label>
+                <Select 
+                  value={gender}
+                  onChange={setGender}
+                  options={[
+                    { value: '', label: 'Select...' },
+                    { value: 'Male', label: 'Male' },
+                    { value: 'Female', label: 'Female' },
+                    { value: 'Other', label: 'Other' },
+                    { value: 'Prefer not to say', label: 'Prefer not to say' },
+                  ]}
+                />
+              </div>
+            </div>
+
+            <div className={styles.row}>
+              <div>
+                <label htmlFor="status" className={styles.label}>Status *</label>
+                <Select 
+                  id="status"
+                  defaultValue={initialData?.status || 'active'}
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'onboarding', label: 'Onboarding' },
+                    { value: 'graduated', label: 'Graduated' },
+                    { value: 'paused', label: 'Paused' }
+                  ]}
+                />
+              </div>
+              <div></div>
             </div>
           </div>
 
-          <div className={styles.row}>
-            <div>
-              <label htmlFor="date_of_birth" className={styles.label}>Date of Birth</label>
-              <DatePicker 
-                id="date_of_birth" 
-                defaultValue={initialData?.date_of_birth || ''} 
-              />
+          {/* Academic Info */}
+          <div className={styles.fieldGroup}>
+            <h3 className={styles.groupTitle}>Academic Information</h3>
+            <div className={styles.row}>
+              <div>
+                <label htmlFor="school_year" className={styles.label}>School Year</label>
+                <Select 
+                  id="school_year" 
+                  value={schoolYear}
+                  onChange={(val) => {
+                    setSchoolYear(val);
+                    setKeyStage(getKeyStageForYearGroup(val));
+                  }}
+                  placeholder="Select Year..."
+                  options={[
+                    { value: 'Year 4', label: 'Year 4' },
+                    { value: 'Year 5', label: 'Year 5' },
+                    { value: 'Year 6', label: 'Year 6 (11+)' },
+                    { value: 'Year 7', label: 'Year 7' },
+                    { value: 'Year 8', label: 'Year 8' },
+                    { value: 'Year 9', label: 'Year 9' },
+                    { value: 'Year 10', label: 'Year 10 (GCSE)' },
+                    { value: 'Year 11', label: 'Year 11 (GCSE)' },
+                    { value: 'Year 12', label: 'Year 12 (A-Level)' },
+                    { value: 'Year 13', label: 'Year 13 (A-Level)' }
+                  ]}
+                />
+              </div>
+              <div>
+                <label htmlFor="key_stage" className={styles.label}>Key Stage</label>
+                <Select 
+                  id="key_stage" 
+                  value={keyStage}
+                  onChange={setKeyStage}
+                  placeholder="Select KS..."
+                  options={[
+                    { value: 'KS2', label: 'KS2' },
+                    { value: 'KS3', label: 'KS3' },
+                    { value: 'KS4', label: 'KS4' },
+                    { value: 'KS5', label: 'KS5' }
+                  ]}
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="status" className={styles.label}>Status *</label>
-              <Select 
-                id="status"
-                defaultValue={initialData?.status || 'active'}
-                options={[
-                  { value: 'active', label: 'Active' },
-                  { value: 'inactive', label: 'Inactive' },
-                  { value: 'onboarding', label: 'Onboarding' },
-                  { value: 'graduated', label: 'Graduated' },
-                  { value: 'paused', label: 'Paused' }
-                ]}
-              />
-            </div>
-          </div>
-
-          <div className={styles.row}>
-            <div>
-              <label htmlFor="school_year" className={styles.label}>School Year</label>
-              <Select 
-                id="school_year" 
-                value={schoolYear}
-                onChange={(val) => {
-                  setSchoolYear(val);
-                  setKeyStage(getKeyStageForYearGroup(val));
-                }}
-                placeholder="Select Year..."
-                options={[
-                  { value: 'Year 4', label: 'Year 4' },
-                  { value: 'Year 5', label: 'Year 5' },
-                  { value: 'Year 6', label: 'Year 6 (11+)' },
-                  { value: 'Year 7', label: 'Year 7' },
-                  { value: 'Year 8', label: 'Year 8' },
-                  { value: 'Year 9', label: 'Year 9' },
-                  { value: 'Year 10', label: 'Year 10 (GCSE)' },
-                  { value: 'Year 11', label: 'Year 11 (GCSE)' },
-                  { value: 'Year 12', label: 'Year 12 (A-Level)' },
-                  { value: 'Year 13', label: 'Year 13 (A-Level)' }
-                ]}
-              />
-            </div>
-            <div>
-              <label htmlFor="key_stage" className={styles.label}>Key Stage</label>
-              <Select 
-                id="key_stage" 
-                value={keyStage}
-                onChange={setKeyStage}
-                placeholder="Select KS..."
-                options={[
-                  { value: 'KS2', label: 'KS2' },
-                  { value: 'KS3', label: 'KS3' },
-                  { value: 'KS4', label: 'KS4' },
-                  { value: 'KS5', label: 'KS5' }
-                ]}
+            <div style={{ marginTop: 'var(--spacing-md)' }}>
+              <label className={styles.label}>School Name</label>
+              <Input 
+                value={schoolName}
+                onChange={e => setSchoolName(e.target.value)}
+                placeholder="e.g. St Mary's Academy"
               />
             </div>
           </div>
@@ -260,6 +316,52 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
             )}
           </div>
 
+          {/* Learning & Goals */}
+          <div className={styles.fieldGroup}>
+            <h3 className={styles.groupTitle}>Learning & Goals</h3>
+            <div>
+              <label className={styles.label}>Learning Needs / SEN</label>
+              <textarea 
+                className={styles.textareaInput}
+                value={learningNeeds}
+                onChange={e => setLearningNeeds(e.target.value)}
+                placeholder="e.g. Dyslexia, ADHD, visual learner..."
+                rows={2}
+              />
+            </div>
+            <div style={{ marginTop: 'var(--spacing-md)' }}>
+              <label className={styles.label}>Goals</label>
+              <textarea 
+                className={styles.textareaInput}
+                value={goals}
+                onChange={e => setGoals(e.target.value)}
+                placeholder="e.g. Achieve grade 7 in Maths GCSE, build confidence..."
+                rows={2}
+              />
+            </div>
+            <div style={{ marginTop: 'var(--spacing-md)' }}>
+              <label className={styles.label}>Availability</label>
+              <textarea 
+                className={styles.textareaInput}
+                value={availability}
+                onChange={e => setAvailability(e.target.value)}
+                placeholder="e.g. Weekdays after 4pm, Saturday mornings..."
+                rows={2}
+              />
+            </div>
+            <div style={{ marginTop: 'var(--spacing-md)' }}>
+              <label className={styles.label}>Medical Notes</label>
+              <textarea 
+                className={styles.textareaInput}
+                value={medicalNotes}
+                onChange={e => setMedicalNotes(e.target.value)}
+                placeholder="Any allergies, conditions, or accessibility needs..."
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {/* Relationships */}
           <div className={styles.fieldGroup}>
             <h3 className={styles.groupTitle}>Relationships</h3>
             <div style={{ marginBottom: 'var(--spacing-4)' }}>
