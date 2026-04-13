@@ -1,8 +1,9 @@
-import { X } from 'lucide-react';
+import { X, User, GraduationCap, BookOpen, Target, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { DatePicker } from '../../components/ui/DatePicker';
+import { AccordionCard } from '../../components/ui/AccordionCard';
 import styles from '../../components/ui/SlideoverForm.module.css';
 import { useEffect, useState } from 'react';
 import type { Student } from '../../types/students';
@@ -23,6 +24,19 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>(
     initialData?.subject_ids || []
   );
+
+  // Expanded state
+  const [expandedSections, setExpandedSections] = useState({
+    personalDetails: true,
+    academicInfo: true,
+    subjects: true,
+    learningGoals: true,
+    relationships: true
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   // Dynamic academic fields
   const [schoolYear, setSchoolYear] = useState<string>('');
@@ -174,216 +188,247 @@ export function StudentForm({ isOpen, onClose, initialData }: StudentFormProps) 
         </div>
 
         <div className={styles.form}>
-          {/* Personal Details */}
-          <div className={styles.fieldGroup}>
-            <h3 className={styles.groupTitle}>Personal Details</h3>
-            <div className={styles.row}>
-              <div>
-                <label htmlFor="first_name" className={styles.label}>First Name *</label>
-                <Input id="first_name" placeholder="E.g. Emily" defaultValue={initialData?.first_name} required />
+          <AccordionCard
+            title="Personal Details"
+            subtitle="Identity"
+            icon={<User size={18} />}
+            expanded={expandedSections.personalDetails}
+            onToggle={() => toggleSection('personalDetails')}
+          >
+            <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+              <div className={styles.row}>
+                <div>
+                  <label htmlFor="first_name" className={styles.label}>First Name *</label>
+                  <Input id="first_name" placeholder="E.g. Emily" defaultValue={initialData?.first_name} required fullWidth />
+                </div>
+                <div>
+                  <label htmlFor="last_name" className={styles.label}>Last Name *</label>
+                  <Input id="last_name" placeholder="E.g. Smith" defaultValue={initialData?.last_name} required fullWidth />
+                </div>
               </div>
-              <div>
-                <label htmlFor="last_name" className={styles.label}>Last Name *</label>
-                <Input id="last_name" placeholder="E.g. Smith" defaultValue={initialData?.last_name} required />
-              </div>
-            </div>
 
-            <div className={styles.row}>
-              <div>
-                <label htmlFor="date_of_birth" className={styles.label}>Date of Birth</label>
-                <DatePicker 
-                  id="date_of_birth" 
-                  defaultValue={initialData?.date_of_birth || ''} 
-                />
+              <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                <div>
+                  <label htmlFor="date_of_birth" className={styles.label}>Date of Birth</label>
+                  <DatePicker 
+                    id="date_of_birth" 
+                    defaultValue={initialData?.date_of_birth || ''} 
+                  />
+                </div>
+                <div>
+                  <label className={styles.label}>Gender</label>
+                  <Select 
+                    value={gender}
+                    onChange={setGender}
+                    options={[
+                      { value: '', label: 'Select...' },
+                      { value: 'Male', label: 'Male' },
+                      { value: 'Female', label: 'Female' },
+                      { value: 'Other', label: 'Other' },
+                      { value: 'Prefer not to say', label: 'Prefer not to say' },
+                    ]}
+                  />
+                </div>
               </div>
-              <div>
-                <label className={styles.label}>Gender</label>
-                <Select 
-                  value={gender}
-                  onChange={setGender}
-                  options={[
-                    { value: '', label: 'Select...' },
-                    { value: 'Male', label: 'Male' },
-                    { value: 'Female', label: 'Female' },
-                    { value: 'Other', label: 'Other' },
-                    { value: 'Prefer not to say', label: 'Prefer not to say' },
-                  ]}
-                />
-              </div>
-            </div>
 
-            <div className={styles.row}>
-              <div>
-                <label htmlFor="status" className={styles.label}>Status *</label>
-                <Select 
-                  id="status"
-                  defaultValue={initialData?.status || 'active'}
-                  options={[
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' },
-                    { value: 'onboarding', label: 'Onboarding' },
-                    { value: 'graduated', label: 'Graduated' },
-                    { value: 'paused', label: 'Paused' }
-                  ]}
-                />
+              <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                <div>
+                  <label htmlFor="status" className={styles.label}>Status *</label>
+                  <Select 
+                    id="status"
+                    defaultValue={initialData?.status || 'active'}
+                    options={[
+                      { value: 'active', label: 'Active' },
+                      { value: 'inactive', label: 'Inactive' },
+                      { value: 'onboarding', label: 'Onboarding' },
+                      { value: 'graduated', label: 'Graduated' },
+                      { value: 'paused', label: 'Paused' }
+                    ]}
+                  />
+                </div>
+                <div></div>
               </div>
-              <div></div>
             </div>
-          </div>
+          </AccordionCard>
 
-          {/* Academic Info */}
-          <div className={styles.fieldGroup}>
-            <h3 className={styles.groupTitle}>Academic Information</h3>
-            <div className={styles.row}>
-              <div>
-                <label htmlFor="school_year" className={styles.label}>School Year</label>
-                <Select 
-                  id="school_year" 
-                  value={schoolYear}
-                  onChange={(val) => {
-                    setSchoolYear(val);
-                    setKeyStage(getKeyStageForYearGroup(val));
-                  }}
-                  placeholder="Select Year..."
-                  options={[
-                    { value: 'Year 4', label: 'Year 4' },
-                    { value: 'Year 5', label: 'Year 5' },
-                    { value: 'Year 6', label: 'Year 6 (11+)' },
-                    { value: 'Year 7', label: 'Year 7' },
-                    { value: 'Year 8', label: 'Year 8' },
-                    { value: 'Year 9', label: 'Year 9' },
-                    { value: 'Year 10', label: 'Year 10 (GCSE)' },
-                    { value: 'Year 11', label: 'Year 11 (GCSE)' },
-                    { value: 'Year 12', label: 'Year 12 (A-Level)' },
-                    { value: 'Year 13', label: 'Year 13 (A-Level)' }
-                  ]}
-                />
-              </div>
-              <div>
-                <label htmlFor="key_stage" className={styles.label}>Key Stage</label>
-                <Select 
-                  id="key_stage" 
-                  value={keyStage}
-                  onChange={setKeyStage}
-                  placeholder="Select KS..."
-                  options={[
-                    { value: 'KS2', label: 'KS2' },
-                    { value: 'KS3', label: 'KS3' },
-                    { value: 'KS4', label: 'KS4' },
-                    { value: 'KS5', label: 'KS5' }
-                  ]}
-                />
-              </div>
-            </div>
-            <div style={{ marginTop: 'var(--spacing-md)' }}>
-              <label className={styles.label}>School Name</label>
-              <Input 
-                value={schoolName}
-                onChange={e => setSchoolName(e.target.value)}
-                placeholder="e.g. St Mary's Academy"
-              />
-            </div>
-          </div>
-
-          {/* Subjects Multi-Select */}
-          <div className={styles.fieldGroup}>
-            <h3 className={styles.groupTitle}>Subjects</h3>
-            <div className={styles.subjectPills}>
-              {activeSubjects.map((subject) => {
-                const isSelected = selectedSubjectIds.includes(subject.id);
-                return (
-                  <button
-                    key={subject.id}
-                    type="button"
-                    className={`${styles.subjectPill} ${isSelected ? styles.subjectPillSelected : ''}`}
-                    style={{
-                      backgroundColor: isSelected ? subject.colour + '22' : undefined,
-                      borderColor: isSelected ? subject.colour : undefined,
-                      color: isSelected ? subject.colour : undefined,
+          <AccordionCard
+            title="Academic Information"
+            subtitle="School"
+            icon={<GraduationCap size={18} />}
+            expanded={expandedSections.academicInfo}
+            onToggle={() => toggleSection('academicInfo')}
+          >
+            <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+              <div className={styles.row}>
+                <div>
+                  <label htmlFor="school_year" className={styles.label}>School Year</label>
+                  <Select 
+                    id="school_year" 
+                    value={schoolYear}
+                    onChange={(val) => {
+                      setSchoolYear(val);
+                      setKeyStage(getKeyStageForYearGroup(val));
                     }}
-                    onClick={() => toggleSubject(subject.id)}
-                  >
-                    {isSelected && <span className={styles.checkMark}>✓</span>}
-                    {subject.name}
-                  </button>
-                );
-              })}
+                    placeholder="Select Year..."
+                    options={[
+                      { value: 'Year 4', label: 'Year 4' },
+                      { value: 'Year 5', label: 'Year 5' },
+                      { value: 'Year 6', label: 'Year 6 (11+)' },
+                      { value: 'Year 7', label: 'Year 7' },
+                      { value: 'Year 8', label: 'Year 8' },
+                      { value: 'Year 9', label: 'Year 9' },
+                      { value: 'Year 10', label: 'Year 10 (GCSE)' },
+                      { value: 'Year 11', label: 'Year 11 (GCSE)' },
+                      { value: 'Year 12', label: 'Year 12 (A-Level)' },
+                      { value: 'Year 13', label: 'Year 13 (A-Level)' }
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="key_stage" className={styles.label}>Key Stage</label>
+                  <Select 
+                    id="key_stage" 
+                    value={keyStage}
+                    onChange={setKeyStage}
+                    placeholder="Select KS..."
+                    options={[
+                      { value: 'KS2', label: 'KS2' },
+                      { value: 'KS3', label: 'KS3' },
+                      { value: 'KS4', label: 'KS4' },
+                      { value: 'KS5', label: 'KS5' }
+                    ]}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
+                <label className={styles.label}>School Name</label>
+                <Input 
+                  value={schoolName}
+                  onChange={e => setSchoolName(e.target.value)}
+                  placeholder="e.g. St Mary's Academy"
+                  fullWidth
+                />
+              </div>
             </div>
-            {activeSubjects.length === 0 && (
-              <p className={styles.subjectHint}>
-                No subjects configured. Add them in Settings → Subjects Offered.
-              </p>
-            )}
-          </div>
+          </AccordionCard>
 
-          {/* Learning & Goals */}
-          <div className={styles.fieldGroup}>
-            <h3 className={styles.groupTitle}>Learning & Goals</h3>
-            <div>
-              <label className={styles.label}>Learning Needs / SEN</label>
-              <textarea 
-                className={styles.textareaInput}
-                value={learningNeeds}
-                onChange={e => setLearningNeeds(e.target.value)}
-                placeholder="e.g. Dyslexia, ADHD, visual learner..."
-                rows={2}
-              />
+          <AccordionCard
+            title="Subjects"
+            subtitle="Curriculum"
+            icon={<BookOpen size={18} />}
+            expanded={expandedSections.subjects}
+            onToggle={() => toggleSection('subjects')}
+          >
+            <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+              <div className={styles.subjectPills}>
+                {activeSubjects.map((subject) => {
+                  const isSelected = selectedSubjectIds.includes(subject.id);
+                  return (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      className={`${styles.subjectPill} ${isSelected ? styles.subjectPillSelected : ''}`}
+                      style={{
+                        backgroundColor: isSelected ? subject.colour + '22' : undefined,
+                        borderColor: isSelected ? subject.colour : undefined,
+                        color: isSelected ? subject.colour : undefined,
+                      }}
+                      onClick={() => toggleSubject(subject.id)}
+                    >
+                      {isSelected && <span className={styles.checkMark}>✓</span>}
+                      {subject.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {activeSubjects.length === 0 && (
+                <p className={styles.subjectHint}>
+                  No subjects configured. Add them in Settings → Subjects Offered.
+                </p>
+              )}
             </div>
-            <div style={{ marginTop: 'var(--spacing-md)' }}>
-              <label className={styles.label}>Goals</label>
-              <textarea 
-                className={styles.textareaInput}
-                value={goals}
-                onChange={e => setGoals(e.target.value)}
-                placeholder="e.g. Achieve grade 7 in Maths GCSE, build confidence..."
-                rows={2}
-              />
-            </div>
-            <div style={{ marginTop: 'var(--spacing-md)' }}>
-              <label className={styles.label}>Availability</label>
-              <textarea 
-                className={styles.textareaInput}
-                value={availability}
-                onChange={e => setAvailability(e.target.value)}
-                placeholder="e.g. Weekdays after 4pm, Saturday mornings..."
-                rows={2}
-              />
-            </div>
-            <div style={{ marginTop: 'var(--spacing-md)' }}>
-              <label className={styles.label}>Medical Notes</label>
-              <textarea 
-                className={styles.textareaInput}
-                value={medicalNotes}
-                onChange={e => setMedicalNotes(e.target.value)}
-                placeholder="Any allergies, conditions, or accessibility needs..."
-                rows={2}
-              />
-            </div>
-          </div>
+          </AccordionCard>
 
-          {/* Relationships */}
-          <div className={styles.fieldGroup}>
-            <h3 className={styles.groupTitle}>Relationships</h3>
-            <div style={{ marginBottom: 'var(--spacing-4)' }}>
-              <label htmlFor="primary_parent_id" className={styles.label}>Primary Parent / Guardian</label>
-              <Select 
-                id="primary_parent_id" 
-                defaultValue={initialData?.primary_parent_id || ''}
-                placeholder="Select Parent..."
-                options={parentOptions}
-              />
+          <AccordionCard
+            title="Learning & Goals"
+            subtitle="Targets"
+            icon={<Target size={18} />}
+            expanded={expandedSections.learningGoals}
+            onToggle={() => toggleSection('learningGoals')}
+          >
+            <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+              <div>
+                <label className={styles.label}>Learning Needs / SEN</label>
+                <textarea 
+                  className={styles.textareaInput}
+                  value={learningNeeds}
+                  onChange={e => setLearningNeeds(e.target.value)}
+                  placeholder="e.g. Dyslexia, ADHD, visual learner..."
+                  rows={2}
+                />
+              </div>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
+                <label className={styles.label}>Goals</label>
+                <textarea 
+                  className={styles.textareaInput}
+                  value={goals}
+                  onChange={e => setGoals(e.target.value)}
+                  placeholder="e.g. Achieve grade 7 in Maths GCSE, build confidence..."
+                  rows={2}
+                />
+              </div>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
+                <label className={styles.label}>Availability</label>
+                <textarea 
+                  className={styles.textareaInput}
+                  value={availability}
+                  onChange={e => setAvailability(e.target.value)}
+                  placeholder="e.g. Weekdays after 4pm, Saturday mornings..."
+                  rows={2}
+                />
+              </div>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
+                <label className={styles.label}>Medical Notes</label>
+                <textarea 
+                  className={styles.textareaInput}
+                  value={medicalNotes}
+                  onChange={e => setMedicalNotes(e.target.value)}
+                  placeholder="Any allergies, conditions, or accessibility needs..."
+                  rows={2}
+                />
+              </div>
             </div>
-            
-            <div>
-              <label htmlFor="tutor_id" className={styles.label}>Assigned Tutor</label>
-              <Select 
-                id="tutor_id" 
-                defaultValue={initialData?.tutor_id || ''}
-                placeholder="Select Tutor..."
-                options={tutorOptions}
-              />
+          </AccordionCard>
+
+          <AccordionCard
+            title="Relationships"
+            subtitle="Connections"
+            icon={<Users size={18} />}
+            expanded={expandedSections.relationships}
+            onToggle={() => toggleSection('relationships')}
+          >
+            <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+              <div style={{ marginBottom: 'var(--spacing-4)' }}>
+                <label htmlFor="primary_parent_id" className={styles.label}>Primary Parent / Guardian</label>
+                <Select 
+                  id="primary_parent_id" 
+                  defaultValue={initialData?.primary_parent_id || ''}
+                  placeholder="Select Parent..."
+                  options={parentOptions}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="tutor_id" className={styles.label}>Assigned Tutor</label>
+                <Select 
+                  id="tutor_id" 
+                  defaultValue={initialData?.tutor_id || ''}
+                  placeholder="Select Tutor..."
+                  options={tutorOptions}
+                />
+              </div>
             </div>
-          </div>
+          </AccordionCard>
 
         </div>
 

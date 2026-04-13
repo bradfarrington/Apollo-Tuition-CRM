@@ -31,4 +31,5 @@ export type Parent = {
   // Computed / Relational (for UI)
   linked_students_count?: number;
   active_enrolments_count?: number;
+  students?: any[];
 };

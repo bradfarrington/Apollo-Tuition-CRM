@@ -16,7 +16,7 @@ export async function convertEnquiryToStudentAndParent(lead: any, enquiry: any, 
     postal_code: lead?.postal_code || null,
     how_heard: lead?.how_heard || lead?.source || null,
     referral_source: lead?.source || null,
-    status: 'onboarding'
+    status: 'active'
   }).select().single();
   
   if (parentError) throw parentError;

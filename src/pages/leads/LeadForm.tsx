@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, ChevronDown, User, FileText, Check } from 'lucide-react';
+import { X, Plus, Trash2, ChevronDown, User, FileText, MapPin, AlignLeft, Tag } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useSubjects } from '../../contexts/SubjectsContext';
 import type { Lead } from '../../types/leads';
 import styles from '../../components/ui/SlideoverForm.module.css';
+import { AccordionCard } from '../../components/ui/AccordionCard';
 
 interface LeadFormProps {
   isOpen: boolean;
@@ -55,7 +56,15 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     { id: '1', first_name: '', last_name: '', date_of_birth: '', year_group: '', subjects: [], notes: '' }
   ]);
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>('1');
-  const [expandedSections, setExpandedSections] = useState({ contact: true, students: true, enquiry: true });
+  const isNewMode = currentMode === 'create' || currentMode === 'add_enquiry';
+  const [expandedSections, setExpandedSections] = useState({ 
+    contactDetails: !isNewMode, 
+    contactAddress: !isNewMode, 
+    contactNotes: !isNewMode, 
+    contactTags: !isNewMode, 
+    students: !isNewMode, 
+    enquiry: !isNewMode 
+  });
 
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
@@ -79,6 +88,16 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
 
   useEffect(() => {
     if (isOpen) {
+      const isNew = currentMode === 'create' || currentMode === 'add_enquiry';
+      setExpandedSections({
+        contactDetails: !isNew,
+        contactAddress: !isNew,
+        contactNotes: !isNew,
+        contactTags: !isNew,
+        students: !isNew,
+        enquiry: !isNew
+      });
+
       // Fetch team members for owner dropdown
       supabase.from('profiles').select('id, full_name').order('full_name').then(({ data }) => {
         setTeamMembers(data || []);
@@ -248,6 +267,25 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           updated_at: new Date().toISOString()
         }).eq('id', lead.id);
         if (error) throw error;
+
+        // Sync to associated parent (by email match) if they exist
+        const matchEmail = lead.email || formData.email;
+        if (matchEmail) {
+          const nameParts = formData.parent_name.split(' ');
+          await supabase.from('parents').update({
+            first_name: nameParts[0],
+            last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
+            email: formData.email || null,
+            phone: formData.phone || null,
+            preferred_contact_method: formData.preferred_contact_method || null,
+            relationship_to_student: formData.relationship_to_student || null,
+            address_line_1: formData.address_line_1 || null,
+            city: formData.city || null,
+            postal_code: formData.postal_code || null,
+            how_heard: formData.how_heard || null,
+            updated_at: new Date().toISOString()
+          }).eq('email', matchEmail);
+        }
       } else if (currentMode === 'add_enquiry' && lead) {
         // Create new Enquiry linked to existing lead
         const { data: enquiryData, error: enqError } = await supabase.from('enquiries').insert({
@@ -366,6 +404,187 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
     }
   };
 
+  const basicInformationFields = (
+    <>
+      <div className={styles.row}>
+        <div>
+          <label className={styles.label}>Full Name *</label>
+          <Input 
+            required 
+            value={formData.parent_name}
+            onChange={e => setFormData({ ...formData, parent_name: e.target.value })}
+            fullWidth
+          />
+        </div>
+        <div>
+          <label className={styles.label}>Relationship to Student</label>
+          <Select 
+            value={formData.relationship_to_student}
+            onChange={val => setFormData({ ...formData, relationship_to_student: val })}
+            options={[
+              { value: '', label: 'Select...' },
+              { value: 'Mother', label: 'Mother' },
+              { value: 'Father', label: 'Father' },
+              { value: 'Guardian', label: 'Guardian' },
+              { value: 'Grandparent', label: 'Grandparent' },
+              { value: 'Other', label: 'Other' }
+            ]}
+          />
+        </div>
+      </div>
+      <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+        <div>
+          <label className={styles.label}>Email Address</label>
+          <Input 
+            type="email"
+            value={formData.email}
+            onChange={e => setFormData({ ...formData, email: e.target.value })}
+            fullWidth
+          />
+        </div>
+        <div>
+          <label className={styles.label}>Phone Number</label>
+          <Input 
+            type="tel"
+            value={formData.phone}
+            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+            fullWidth
+          />
+        </div>
+      </div>
+      <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+        <div>
+          <label className={styles.label}>Preferred Contact Method</label>
+          <Select 
+            value={formData.preferred_contact_method}
+            onChange={val => setFormData({ ...formData, preferred_contact_method: val })}
+            options={[
+              { value: '', label: 'Select...' },
+              { value: 'email', label: 'Email' },
+              { value: 'phone', label: 'Phone' },
+              { value: 'whatsapp', label: 'WhatsApp' },
+              { value: 'sms', label: 'SMS' }
+            ]}
+          />
+        </div>
+        <div>
+          <label className={styles.label}>How Did They Hear About Us?</label>
+          <Select 
+            value={formData.how_heard}
+            onChange={val => setFormData({ ...formData, how_heard: val })}
+            options={[
+              { value: '', label: 'Select...' },
+              ...leadSourceOptions
+            ]}
+          />
+        </div>
+      </div>
+    </>
+  );
+
+  const addressFields = (
+    <>
+      <div>
+        <label className={styles.label}>Address Line 1</label>
+        <Input 
+          value={formData.address_line_1}
+          onChange={e => setFormData({ ...formData, address_line_1: e.target.value })}
+          placeholder="123 Street Name"
+          fullWidth
+        />
+      </div>
+      <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+        <div>
+          <label className={styles.label}>Town/City</label>
+          <Input 
+            value={formData.city}
+            onChange={e => setFormData({ ...formData, city: e.target.value })}
+            fullWidth
+          />
+        </div>
+        <div>
+          <label className={styles.label}>Postal Code</label>
+          <Input 
+            value={formData.postal_code}
+            onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
+            placeholder="SW1A 1AA"
+            fullWidth
+          />
+        </div>
+      </div>
+    </>
+  );
+
+  const notesFields = (
+    <div>
+      <label className={styles.label}>Initial Message / Notes</label>
+      <textarea 
+        className={styles.textareaInput} 
+        placeholder="Any notes about this contact..."
+        value={formData.message}
+        onChange={e => setFormData({ ...formData, message: e.target.value })}
+      />
+    </div>
+  );
+
+  const tagsFields = (
+    <div style={{ position: 'relative' }} ref={tagInputRef}>
+      <div className={styles.textareaInput} style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '42px', alignItems: 'center', padding: '6px 12px' }}>
+        {formData.tags?.map(tag => {
+            const tagInfo = availableTags.find(t => t.name === tag);
+            return (
+              <span key={tag} style={{ background: tagInfo?.color ? `${tagInfo.color}22` : '#f1f5f9', color: tagInfo?.color || '#475569', border: `1px solid ${tagInfo?.color || '#cbd5e1'}`, padding: '2px 8px', borderRadius: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {tag}
+                <button type="button" onClick={() => handleTagRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7, padding: 0, display: 'flex' }}>
+                  <X size={10} />
+                </button>
+              </span>
+            )
+        })}
+        <input
+          type="text"
+          value={tagInputText}
+          onChange={e => { setTagInputText(e.target.value); setShowTagDropdown(true); }}
+          onFocus={() => setShowTagDropdown(true)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (tagInputText.trim()) {
+                handleTagAdd(tagInputText);
+              }
+            }
+          }}
+          placeholder={formData.tags?.length ? "Add another tag..." : "Type to create or search tags..."}
+          style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, minWidth: '120px', fontSize: '14px' }}
+        />
+      </div>
+      
+      {showTagDropdown && (tagInputText || availableTags.length > 0) && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
+          {tagInputText && !availableTags.find(t => t.name.toLowerCase() === tagInputText.toLowerCase()) && (
+            <div 
+              onClick={() => { handleTagAdd(tagInputText); setShowTagDropdown(false); }}
+              style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent-blue)', fontSize: '14px', background: 'var(--color-bg-subtle)' }}
+            >
+              <Plus size={14} /> Create new tag "{tagInputText}"
+            </div>
+          )}
+          {availableTags.filter(t => t.name.toLowerCase().includes(tagInputText.toLowerCase()) && !formData.tags?.includes(t.name)).map(tag => (
+            <div 
+              key={tag.name}
+              onClick={() => { handleTagAdd(tag.name); setShowTagDropdown(false); }}
+              style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}
+              className={styles.dropdownItemHover}
+            >
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: tag.color }}></div>
+              {tag.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
@@ -380,324 +599,128 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
           
           {/* ========== CONTACT DETAILS ========== */}
           {currentMode !== 'add_enquiry' && currentMode !== 'edit_enquiry' && (
-            <div style={{ 
-              background: expandedSections.contact ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
-              border: `1px solid ${expandedSections.contact ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
-              borderRadius: 'var(--radius-lg)', 
-              marginBottom: '24px', 
-              boxShadow: expandedSections.contact ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
-              transition: 'all 0.2s ease'
-            }}>
-              {/* Collapsible Header */}
-              <div 
-                onClick={() => setExpandedSections(prev => ({ ...prev, contact: !prev.contact }))}
-                style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '40px', height: '40px', borderRadius: '50%', 
-                    background: expandedSections.contact ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
-                    border: `1px solid ${expandedSections.contact ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: expandedSections.contact ? 'white' : 'var(--color-accent-primary)',
-                    transition: 'all 0.2s ease',
-                    flexShrink: 0
-                  }}>
-                    <User size={18} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Parent / Guardian
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      Contact Details
-                    </div>
-                    {!expandedSections.contact && (formData.parent_name || formData.email) && (
-                       <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
-                          {formData.parent_name} {formData.parent_name && formData.email && '•'} {formData.email}
-                       </div>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: expandedSections.contact ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                </div>
-              </div>
-
-              {/* Accordion Body */}
-              {expandedSections.contact && (
-                <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                  
-                  {/* Basic Information */}
+            currentMode === 'edit_contact' ? (
+              <>
+                <AccordionCard
+                  title="Contact Details"
+                  subtitle="Parent / Guardian"
+                  icon={<User size={18} />}
+                  expanded={expandedSections.contactDetails}
+                  onToggle={() => setExpandedSections(prev => ({ ...prev, contactDetails: !prev.contactDetails }))}
+                  summary={(formData.parent_name || formData.email) ? `${formData.parent_name} ${formData.parent_name && formData.email ? '•' : ''} ${formData.email}` : undefined}
+                >
                   <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
-                    <h3 className={styles.groupTitle}>Basic Information</h3>
-                    <div className={styles.row}>
-                      <div>
-                        <label className={styles.label}>Full Name *</label>
-                        <Input 
-                          required 
-                          value={formData.parent_name}
-                          onChange={e => setFormData({ ...formData, parent_name: e.target.value })}
-                          fullWidth
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Relationship to Student</label>
-                        <Select 
-                          value={formData.relationship_to_student}
-                          onChange={val => setFormData({ ...formData, relationship_to_student: val })}
-                          options={[
-                            { value: '', label: 'Select...' },
-                            { value: 'Mother', label: 'Mother' },
-                            { value: 'Father', label: 'Father' },
-                            { value: 'Guardian', label: 'Guardian' },
-                            { value: 'Grandparent', label: 'Grandparent' },
-                            { value: 'Other', label: 'Other' }
-                          ]}
-                        />
-                      </div>
-                    </div>
-                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
-                      <div>
-                        <label className={styles.label}>Email Address</label>
-                        <Input 
-                          type="email"
-                          value={formData.email}
-                          onChange={e => setFormData({ ...formData, email: e.target.value })}
-                          fullWidth
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Phone Number</label>
-                        <Input 
-                          type="tel"
-                          value={formData.phone}
-                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                          fullWidth
-                        />
-                      </div>
-                    </div>
-                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
-                      <div>
-                        <label className={styles.label}>Preferred Contact Method</label>
-                        <Select 
-                          value={formData.preferred_contact_method}
-                          onChange={val => setFormData({ ...formData, preferred_contact_method: val })}
-                          options={[
-                            { value: '', label: 'Select...' },
-                            { value: 'email', label: 'Email' },
-                            { value: 'phone', label: 'Phone' },
-                            { value: 'whatsapp', label: 'WhatsApp' },
-                            { value: 'sms', label: 'SMS' }
-                          ]}
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>How Did They Hear About Us?</label>
-                        <Select 
-                          value={formData.how_heard}
-                          onChange={val => setFormData({ ...formData, how_heard: val })}
-                          options={[
-                            { value: '', label: 'Select...' },
-                            ...leadSourceOptions
-                          ]}
-                        />
-                      </div>
-                    </div>
+                    {basicInformationFields}
                   </div>
+                </AccordionCard>
 
-                  {/* Address */}
-                  <div className={styles.fieldGroup}>
-                    <h3 className={styles.groupTitle}>Address</h3>
-                    <div>
-                      <label className={styles.label}>Address Line 1</label>
-                      <Input 
-                        value={formData.address_line_1}
-                        onChange={e => setFormData({ ...formData, address_line_1: e.target.value })}
-                        placeholder="123 Street Name"
-                        fullWidth
-                      />
-                    </div>
-                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
-                      <div>
-                        <label className={styles.label}>Town/City</label>
-                        <Input 
-                          value={formData.city}
-                          onChange={e => setFormData({ ...formData, city: e.target.value })}
-                          fullWidth
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Postal Code</label>
-                        <Input 
-                          value={formData.postal_code}
-                          onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
-                          placeholder="SW1A 1AA"
-                          fullWidth
-                        />
-                      </div>
-                    </div>
+                <AccordionCard
+                  title="Address"
+                  subtitle="Location"
+                  icon={<MapPin size={18} />}
+                  expanded={expandedSections.contactAddress}
+                  onToggle={() => setExpandedSections(prev => ({ ...prev, contactAddress: !prev.contactAddress }))}
+                >
+                  <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+                    {addressFields}
                   </div>
+                </AccordionCard>
 
-                  {/* Notes */}
-                  <div className={styles.fieldGroup}>
-                    <h3 className={styles.groupTitle}>Notes</h3>
-                    <div>
-                      <label className={styles.label}>Initial Message / Notes</label>
-                      <textarea 
-                        className={styles.textareaInput} 
-                        placeholder="Any notes about this contact..."
-                        value={formData.message}
-                        onChange={e => setFormData({ ...formData, message: e.target.value })}
-                      />
-                    </div>
+                <AccordionCard
+                  title="Notes"
+                  subtitle="Initial Message"
+                  icon={<AlignLeft size={18} />}
+                  expanded={expandedSections.contactNotes}
+                  onToggle={() => setExpandedSections(prev => ({ ...prev, contactNotes: !prev.contactNotes }))}
+                >
+                  <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+                    {notesFields}
                   </div>
+                </AccordionCard>
 
-                  {/* Tags */}
-                  <div className={styles.fieldGroup}>
-                    <h3 className={styles.groupTitle}>Tags</h3>
-                    <div style={{ position: 'relative' }} ref={tagInputRef}>
-                      <div className={styles.textareaInput} style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '42px', alignItems: 'center', padding: '6px 12px' }}>
-                        {formData.tags?.map(tag => {
-                           const tagInfo = availableTags.find(t => t.name === tag);
-                           return (
-                             <span key={tag} style={{ background: tagInfo?.color ? `${tagInfo.color}22` : '#f1f5f9', color: tagInfo?.color || '#475569', border: `1px solid ${tagInfo?.color || '#cbd5e1'}`, padding: '2px 8px', borderRadius: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                               {tag}
-                               <button type="button" onClick={() => handleTagRemove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7, padding: 0, display: 'flex' }}>
-                                 <X size={10} />
-                               </button>
-                             </span>
-                           )
-                        })}
-                        <input
-                          type="text"
-                          value={tagInputText}
-                          onChange={e => { setTagInputText(e.target.value); setShowTagDropdown(true); }}
-                          onFocus={() => setShowTagDropdown(true)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              if (tagInputText.trim()) {
-                                handleTagAdd(tagInputText);
-                              }
-                            }
-                          }}
-                          placeholder={formData.tags?.length ? "Add another tag..." : "Type to create or search tags..."}
-                          style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, minWidth: '120px', fontSize: '14px' }}
-                        />
-                      </div>
-                      
-                      {showTagDropdown && (tagInputText || availableTags.length > 0) && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
-                          {tagInputText && !availableTags.find(t => t.name.toLowerCase() === tagInputText.toLowerCase()) && (
-                            <div 
-                              onClick={() => { handleTagAdd(tagInputText); setShowTagDropdown(false); }}
-                              style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent-blue)', fontSize: '14px', background: 'var(--color-bg-subtle)' }}
-                            >
-                              <Plus size={14} /> Create new tag "{tagInputText}"
-                            </div>
-                          )}
-                          {availableTags.filter(t => t.name.toLowerCase().includes(tagInputText.toLowerCase()) && !formData.tags?.includes(t.name)).map(tag => (
-                            <div 
-                              key={tag.name}
-                              onClick={() => { handleTagAdd(tag.name); setShowTagDropdown(false); }}
-                              style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}
-                              className={styles.dropdownItemHover}
-                            >
-                              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: tag.color }}></div>
-                              {tag.name}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                <AccordionCard
+                  title="Tags"
+                  subtitle="Categorization"
+                  icon={<Tag size={18} />}
+                  expanded={expandedSections.contactTags}
+                  onToggle={() => setExpandedSections(prev => ({ ...prev, contactTags: !prev.contactTags }))}
+                >
+                  <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px', overflow: 'visible' }}>
+                    {tagsFields}
                   </div>
-
+                </AccordionCard>
+              </>
+            ) : (
+              <AccordionCard
+                title="Contact Details"
+                subtitle="Parent / Guardian"
+                icon={<User size={18} />}
+                expanded={expandedSections.contactDetails}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, contactDetails: !prev.contactDetails }))}
+                summary={(formData.parent_name || formData.email) ? `${formData.parent_name} ${formData.parent_name && formData.email ? '•' : ''} ${formData.email}` : undefined}
+              >
+                <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+                  <h3 className={styles.groupTitle} style={{ marginTop: 0 }}>Basic Information</h3>
+                  {basicInformationFields}
                 </div>
-              )}
-            </div>
+                <div className={styles.fieldGroup}>
+                  <h3 className={styles.groupTitle}>Address</h3>
+                  {addressFields}
+                </div>
+                <div className={styles.fieldGroup}>
+                  <h3 className={styles.groupTitle}>Notes</h3>
+                  {notesFields}
+                </div>
+                <div className={styles.fieldGroup} style={{ overflow: 'visible' }}>
+                  <h3 className={styles.groupTitle}>Tags</h3>
+                  {tagsFields}
+                </div>
+              </AccordionCard>
+            )
           )}
 
           {/* ========== STUDENT DETAILS ========== */}
           {currentMode !== 'edit_contact' && (
-            <div style={{ 
-              background: expandedSections.students ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
-              border: `1px solid ${expandedSections.students ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
-              borderRadius: 'var(--radius-lg)', 
-              marginBottom: '24px', 
-              boxShadow: expandedSections.students ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
-              transition: 'all 0.2s ease'
-            }}>
-              {/* Collapsible Header */}
-              <div 
-                onClick={() => setExpandedSections(prev => ({ ...prev, students: !prev.students }))}
-                style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '40px', height: '40px', borderRadius: '50%', 
-                    background: expandedSections.students ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
-                    border: `1px solid ${expandedSections.students ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: expandedSections.students ? 'white' : 'var(--color-accent-primary)',
+            <AccordionCard
+              title="Student List"
+              subtitle="Students"
+              icon={<User size={18} />}
+              expanded={expandedSections.students}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, students: !prev.students }))}
+              summary={`${students.length} Student${students.length !== 1 ? 's' : ''}`}
+            >
+              <div style={{ paddingTop: '16px' }}>
+                {students.map((student, index) => {
+                  const isInnerExpanded = expandedStudentId === student.id;
+                  return (
+                  <div key={student.id} style={{
+                    marginTop: '16px', 
+                    background: 'var(--color-bg-surface)', 
+                    border: `1px solid ${isInnerExpanded ? 'var(--color-border-strong, #cbd5e1)' : 'var(--color-border-subtle)'}`, 
+                    boxShadow: isInnerExpanded ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                    borderRadius: 'var(--radius-md)', 
                     transition: 'all 0.2s ease',
-                    flexShrink: 0
+                    overflow: 'visible'
                   }}>
-                    <User size={18} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Students
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      Student List
-                    </div>
-                    {!expandedSections.students && (
-                       <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
-                          {students.length} Student{students.length !== 1 ? 's' : ''}
-                       </div>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: expandedSections.students ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                </div>
-              </div>
-
-              {/* Accordion Body */}
-              {expandedSections.students && (
-                <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                  {students.map((student, index) => {
-                    const isInnerExpanded = expandedStudentId === student.id;
-                    return (
-                    <div key={student.id} style={{
-                      marginTop: '16px', 
-                      background: 'var(--color-bg-surface)', 
-                      border: `1px solid ${isInnerExpanded ? 'var(--color-border-strong, #cbd5e1)' : 'var(--color-border-subtle)'}`, 
-                      boxShadow: isInnerExpanded ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-                      borderRadius: 'var(--radius-md)', 
-                      transition: 'all 0.2s ease',
-                      overflow: 'visible'
-                    }}>
-                      <div 
-                        onClick={() => setExpandedStudentId(isInnerExpanded ? null : student.id)}
-                        style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isInnerExpanded ? 'transparent' : 'var(--color-bg-surface)' }}
-                      >
-                        <h3 className={styles.groupTitle} style={{ margin: 0, color: isInnerExpanded ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
-                           {student.first_name || student.last_name ? `${student.first_name} ${student.last_name}`.trim() : `New Student ${index + 1}`}
-                        </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {students.length > 1 && (
-                            <button type="button" onClick={(e) => { e.stopPropagation(); removeStudent(student.id); }} style={{ color: 'var(--color-danger)', fontSize: '12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Trash2 size={14} /> Remove
-                            </button>
-                          )}
-                          <ChevronDown size={18} style={{ color: 'var(--color-text-tertiary)', transform: isInnerExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                        </div>
+                    <div 
+                      onClick={() => setExpandedStudentId(isInnerExpanded ? null : student.id)}
+                      style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isInnerExpanded ? 'transparent' : 'var(--color-bg-surface)' }}
+                    >
+                      <h3 className={styles.groupTitle} style={{ margin: 0, color: isInnerExpanded ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
+                          {student.first_name || student.last_name ? `${student.first_name} ${student.last_name}`.trim() : `New Student ${index + 1}`}
+                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {students.length > 1 && (
+                          <button type="button" onClick={(e) => { e.stopPropagation(); removeStudent(student.id); }} style={{ color: 'var(--color-danger)', fontSize: '12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        )}
+                        <ChevronDown size={18} style={{ color: 'var(--color-text-tertiary)', transform: isInnerExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
                       </div>
-                      
-                      {isInnerExpanded && (
-                      <div style={{ padding: '16px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                    </div>
+                    
+                    {isInnerExpanded && (
+                    <div style={{ padding: '16px', borderTop: '1px solid var(--color-border-subtle)' }}>
                       <div className={styles.row}>
                         <div>
                           <label className={styles.label}>First Name</label>
@@ -777,239 +800,191 @@ export function LeadForm({ isOpen, onClose, lead, mode, editingEnquiry }: LeadFo
                           style={{ minHeight: '80px' }}
                         />
                       </div>
-                      
-                      </div>
-                      )}
                     </div>
-                  )})}
-
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                    <button type="button" onClick={addStudent} style={{ color: 'var(--color-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-background-elevated)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 20px', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s' }}>
-                      <Plus size={16} /> Add Another Student
-                    </button>
+                    )}
                   </div>
+                )})}
+
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                  <button type="button" onClick={addStudent} style={{ color: 'var(--color-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-background-elevated)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 20px', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s' }}>
+                    <Plus size={16} /> Add Another Student
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            </AccordionCard>
           )}
 
           {/* ========== ENQUIRY DETAILS ========== */}
           {currentMode !== 'edit_contact' && (
-            <div style={{ 
-              background: expandedSections.enquiry ? 'var(--color-background-elevated)' : 'rgba(138, 148, 255, 0.04)', 
-              border: `1px solid ${expandedSections.enquiry ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.3)'}`, 
-              borderRadius: 'var(--radius-lg)', 
-              marginBottom: '24px', 
-              boxShadow: expandedSections.enquiry ? '-8px 12px 24px rgba(244, 114, 182, 0.12), 0px 16px 24px rgba(167, 139, 250, 0.12), 8px 12px 24px rgba(56, 189, 248, 0.12)' : '-4px 6px 16px rgba(244, 114, 182, 0.06), 0px 8px 16px rgba(167, 139, 250, 0.06), 4px 6px 16px rgba(56, 189, 248, 0.06)',
-              transition: 'all 0.2s ease'
-            }}>
-              {/* Collapsible Header */}
-              <div 
-                onClick={() => setExpandedSections(prev => ({ ...prev, enquiry: !prev.enquiry }))}
-                style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '40px', height: '40px', borderRadius: '50%', 
-                    background: expandedSections.enquiry ? 'var(--color-accent-primary)' : 'rgba(138, 148, 255, 0.15)',
-                    border: `1px solid ${expandedSections.enquiry ? 'transparent' : 'rgba(138, 148, 255, 0.3)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: expandedSections.enquiry ? 'white' : 'var(--color-accent-primary)',
-                    transition: 'all 0.2s ease',
-                    flexShrink: 0
-                  }}>
-                    <FileText size={18} />
+            <AccordionCard
+              title="Details & Preferences"
+              subtitle="Enquiry"
+              icon={<FileText size={18} />}
+              expanded={expandedSections.enquiry}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, enquiry: !prev.enquiry }))}
+              summary={enquiry.enquiry_type || undefined}
+            >
+              <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
+                <h3 className={styles.groupTitle}>Pipeline & Assignment</h3>
+                <div className={styles.row}>
+                  <div>
+                    <label className={styles.label}>Pipeline</label>
+                    <Select 
+                      value={enquiry.pipeline_id}
+                      onChange={val => setEnquiry({ ...enquiry, pipeline_id: val, stage_id: '' })}
+                      options={[
+                        { value: '', label: 'Select Pipeline...' },
+                        ...pipelines.map(p => ({ value: p.id, label: p.name }))
+                      ]}
+                    />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Enquiry
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      Details & Preferences
-                    </div>
-                    {!expandedSections.enquiry && enquiry.enquiry_type && (
-                       <div style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
-                          {enquiry.enquiry_type}
-                       </div>
-                    )}
+                  <div>
+                    <label className={styles.label}>Stage</label>
+                    <Select 
+                      value={enquiry.stage_id}
+                      onChange={val => setEnquiry({ ...enquiry, stage_id: val })}
+                      options={[
+                        { value: '', label: 'Select Stage...' },
+                        ...stages.map(s => ({ value: s.id, label: s.name }))
+                      ]}
+                    />
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <ChevronDown size={20} style={{ color: 'var(--color-text-tertiary)', transform: expandedSections.enquiry ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
+                  <div>
+                    <label className={styles.label}>Assigned Team Member</label>
+                    <Select 
+                      value={enquiry.owner_id}
+                      onChange={val => setEnquiry({ ...enquiry, owner_id: val })}
+                      options={[
+                        { value: '', label: 'Unassigned' },
+                        ...teamMembers.map(tm => ({ value: tm.id, label: tm.full_name }))
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.label}>Enquiry Type</label>
+                    <Select 
+                      value={enquiry.enquiry_type}
+                      onChange={val => setEnquiry({ ...enquiry, enquiry_type: val })}
+                      options={[
+                        { value: '', label: 'Select Type...' },
+                        { value: 'New Tuition', label: 'New Tuition' },
+                        { value: 'Additional Subject', label: 'Additional Subject' },
+                        { value: 'Group Tuition', label: 'Group Tuition' },
+                        { value: 'Exam Prep', label: 'Exam Prep' },
+                        { value: 'Holiday Intensive', label: 'Holiday Intensive' },
+                        { value: 'Assessment', label: 'Assessment' },
+                        { value: 'Other', label: 'Other' }
+                      ]}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Accordion Body */}
-              {expandedSections.enquiry && (
-                <div style={{ padding: '0 16px 20px 16px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                  
-                  {/* Pipeline & Assignment */}
-                  <div className={styles.fieldGroup} style={{ borderTop: 'none', paddingTop: '16px' }}>
-                    <h3 className={styles.groupTitle}>Pipeline & Assignment</h3>
-                    <div className={styles.row}>
-                      <div>
-                        <label className={styles.label}>Pipeline</label>
-                        <Select 
-                          value={enquiry.pipeline_id}
-                          onChange={val => setEnquiry({ ...enquiry, pipeline_id: val, stage_id: '' })}
-                          options={[
-                            { value: '', label: 'Select Pipeline...' },
-                            ...pipelines.map(p => ({ value: p.id, label: p.name }))
-                          ]}
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Stage</label>
-                        <Select 
-                          value={enquiry.stage_id}
-                          onChange={val => setEnquiry({ ...enquiry, stage_id: val })}
-                          options={[
-                            { value: '', label: 'Select Stage...' },
-                            ...stages.map(s => ({ value: s.id, label: s.name }))
-                          ]}
-                        />
-                      </div>
-                    </div>
-                    <div className={styles.row} style={{ marginTop: 'var(--spacing-md)' }}>
-                      <div>
-                        <label className={styles.label}>Assigned Team Member</label>
-                        <Select 
-                          value={enquiry.owner_id}
-                          onChange={val => setEnquiry({ ...enquiry, owner_id: val })}
-                          options={[
-                            { value: '', label: 'Unassigned' },
-                            ...teamMembers.map(tm => ({ value: tm.id, label: tm.full_name }))
-                          ]}
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Enquiry Type</label>
-                        <Select 
-                          value={enquiry.enquiry_type}
-                          onChange={val => setEnquiry({ ...enquiry, enquiry_type: val })}
-                          options={[
-                            { value: '', label: 'Select Type...' },
-                            { value: 'New Tuition', label: 'New Tuition' },
-                            { value: 'Additional Subject', label: 'Additional Subject' },
-                            { value: 'Group Tuition', label: 'Group Tuition' },
-                            { value: 'Exam Prep', label: 'Exam Prep' },
-                            { value: 'Holiday Intensive', label: 'Holiday Intensive' },
-                            { value: 'Assessment', label: 'Assessment' },
-                            { value: 'Other', label: 'Other' }
-                          ]}
-                        />
-                      </div>
-                    </div>
+              <div className={styles.fieldGroup}>
+                <h3 className={styles.groupTitle}>Source & Urgency</h3>
+                <div className={styles.row}>
+                  <div>
+                    <label className={styles.label}>Enquiry Source</label>
+                    <Select 
+                      value={enquiry.source}
+                      onChange={val => setEnquiry({ ...enquiry, source: val })}
+                      options={[
+                        { value: '', label: 'Select...' },
+                        { value: 'Phone Call', label: 'Phone Call' },
+                        { value: 'Email', label: 'Email' },
+                        { value: 'Website Form', label: 'Website Form' },
+                        { value: 'WhatsApp', label: 'WhatsApp' },
+                        { value: 'Walk-in', label: 'Walk-in' },
+                        { value: 'Referral', label: 'Referral' },
+                        { value: 'Social Media', label: 'Social Media' },
+                        { value: 'Other', label: 'Other' }
+                      ]}
+                    />
                   </div>
-
-                  {/* Source & Urgency */}
-                  <div className={styles.fieldGroup}>
-                    <h3 className={styles.groupTitle}>Source & Urgency</h3>
-                    <div className={styles.row}>
-                      <div>
-                        <label className={styles.label}>Enquiry Source</label>
-                        <Select 
-                          value={enquiry.source}
-                          onChange={val => setEnquiry({ ...enquiry, source: val })}
-                          options={[
-                            { value: '', label: 'Select...' },
-                            { value: 'Phone Call', label: 'Phone Call' },
-                            { value: 'Email', label: 'Email' },
-                            { value: 'Website Form', label: 'Website Form' },
-                            { value: 'WhatsApp', label: 'WhatsApp' },
-                            { value: 'Walk-in', label: 'Walk-in' },
-                            { value: 'Referral', label: 'Referral' },
-                            { value: 'Social Media', label: 'Social Media' },
-                            { value: 'Other', label: 'Other' }
-                          ]}
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Urgency</label>
-                        <Select 
-                          value={enquiry.urgency}
-                          onChange={val => setEnquiry({ ...enquiry, urgency: val })}
-                          options={[
-                            { value: 'low', label: '🟢 Low' },
-                            { value: 'medium', label: '🟡 Medium' },
-                            { value: 'high', label: '🔴 High' }
-                          ]}
-                        />
-                      </div>
-                    </div>
+                  <div>
+                    <label className={styles.label}>Urgency</label>
+                    <Select 
+                      value={enquiry.urgency}
+                      onChange={val => setEnquiry({ ...enquiry, urgency: val })}
+                      options={[
+                        { value: 'low', label: '🟢 Low' },
+                        { value: 'medium', label: '🟡 Medium' },
+                        { value: 'high', label: '🔴 High' }
+                      ]}
+                    />
                   </div>
-
-                  {/* Lesson Preferences */}
-                  <div className={styles.fieldGroup}>
-                    <h3 className={styles.groupTitle}>Lesson Preferences</h3>
-                    <div className={styles.row}>
-                      <div>
-                        <label className={styles.label}>Preferred Start Date</label>
-                        <DatePicker 
-                          id="preferred_start_date"
-                          defaultValue={enquiry.preferred_start_date}
-                          onChange={(val: string) => setEnquiry({ ...enquiry, preferred_start_date: val })}
-                        />
-                      </div>
-                      <div>
-                        <label className={styles.label}>Lesson Frequency</label>
-                        <Select 
-                          value={enquiry.lesson_frequency}
-                          onChange={val => setEnquiry({ ...enquiry, lesson_frequency: val })}
-                          options={[
-                            { value: '', label: 'Select...' },
-                            { value: 'Once a week', label: 'Once a week' },
-                            { value: 'Twice a week', label: 'Twice a week' },
-                            { value: '3+ times a week', label: '3+ times a week' },
-                            { value: 'Fortnightly', label: 'Fortnightly' },
-                            { value: 'Intensive / Block', label: 'Intensive / Block' },
-                            { value: 'Ad hoc', label: 'Ad hoc / As needed' }
-                          ]}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 'var(--spacing-md)' }}>
-                      <label className={styles.label}>Lesson Format</label>
-                      <Select 
-                        value={enquiry.lesson_format}
-                        onChange={val => setEnquiry({ ...enquiry, lesson_format: val })}
-                        options={[
-                          { value: '', label: 'Select...' },
-                          { value: 'Online', label: 'Online' },
-                          { value: 'In-person', label: 'In-person (at student\'s home)' },
-                          { value: 'Centre-based', label: 'Centre-based' },
-                          { value: 'Hybrid', label: 'Hybrid (mix of online & in-person)' }
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div className={styles.fieldGroup}>
-                    <h3 className={styles.groupTitle}>Notes</h3>
-                    <div>
-                      <label className={styles.label}>Parent's Message</label>
-                      <textarea 
-                        className={styles.textareaInput} 
-                        placeholder="What the parent told you about their requirements..."
-                        value={enquiry.message}
-                        onChange={e => setEnquiry({ ...enquiry, message: e.target.value })}
-                      />
-                    </div>
-                    <div style={{ marginTop: 'var(--spacing-md)' }}>
-                      <label className={styles.label}>Internal Notes</label>
-                      <textarea 
-                        className={styles.textareaInput} 
-                        placeholder="Team-only notes about this enquiry..."
-                        value={enquiry.notes}
-                        onChange={e => setEnquiry({ ...enquiry, notes: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
                 </div>
-              )}
-            </div>
+              </div>
+
+              <div className={styles.fieldGroup}>
+                <h3 className={styles.groupTitle}>Lesson Preferences</h3>
+                <div className={styles.row}>
+                  <div>
+                    <label className={styles.label}>Preferred Start Date</label>
+                    <DatePicker 
+                      id="preferred_start_date"
+                      defaultValue={enquiry.preferred_start_date}
+                      onChange={(val: string) => setEnquiry({ ...enquiry, preferred_start_date: val })}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.label}>Lesson Frequency</label>
+                    <Select 
+                      value={enquiry.lesson_frequency}
+                      onChange={val => setEnquiry({ ...enquiry, lesson_frequency: val })}
+                      options={[
+                        { value: '', label: 'Select...' },
+                        { value: 'Once a week', label: 'Once a week' },
+                        { value: 'Twice a week', label: 'Twice a week' },
+                        { value: '3+ times a week', label: '3+ times a week' },
+                        { value: 'Fortnightly', label: 'Fortnightly' },
+                        { value: 'Intensive / Block', label: 'Intensive / Block' },
+                        { value: 'Ad hoc', label: 'Ad hoc / As needed' }
+                      ]}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginTop: 'var(--spacing-md)' }}>
+                  <label className={styles.label}>Lesson Format</label>
+                  <Select 
+                    value={enquiry.lesson_format}
+                    onChange={val => setEnquiry({ ...enquiry, lesson_format: val })}
+                    options={[
+                      { value: '', label: 'Select...' },
+                      { value: 'Online', label: 'Online' },
+                      { value: 'In-person', label: 'In-person (at student\'s home)' },
+                      { value: 'Centre-based', label: 'Centre-based' },
+                      { value: 'Hybrid', label: 'Hybrid (mix of online & in-person)' }
+                    ]}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.fieldGroup}>
+                <h3 className={styles.groupTitle}>Notes</h3>
+                <div>
+                  <label className={styles.label}>Parent's Message</label>
+                  <textarea 
+                    className={styles.textareaInput} 
+                    placeholder="What the parent told you about their requirements..."
+                    value={enquiry.message}
+                    onChange={e => setEnquiry({ ...enquiry, message: e.target.value })}
+                  />
+                </div>
+                <div style={{ marginTop: 'var(--spacing-md)' }}>
+                  <label className={styles.label}>Internal Notes</label>
+                  <textarea 
+                    className={styles.textareaInput} 
+                    placeholder="Team-only notes about this enquiry..."
+                    value={enquiry.notes}
+                    onChange={e => setEnquiry({ ...enquiry, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+            </AccordionCard>
           )}
 
         </form>

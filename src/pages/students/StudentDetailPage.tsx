@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getRelativeTime } from '../../lib/dateUtils';
 import { 
   Edit2, Plus, Trash2, Mail, GraduationCap, 
   FileText, MoreVertical, Calendar,
@@ -12,6 +13,7 @@ import { Badge } from '../../components/ui/Badge';
 import type { Student } from '../../types/students';
 import { StudentForm } from './StudentForm';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 import { useSubjects } from '../../contexts/SubjectsContext';
 import { getAcademicDetailsFromCohort } from '../../utils/academicYear';
 import { DocumentManager } from '../../components/documents/DocumentManager';
@@ -35,6 +37,7 @@ export function StudentDetailPage() {
   const { subjects } = useSubjects();
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info'}>({ isOpen: false, title: '', message: '', type: 'info' });
 
   // ---- Fetch Student from Supabase ----
   const fetchStudent = useCallback(async () => {
@@ -148,7 +151,7 @@ export function StudentDetailPage() {
     const { error } = await supabase.from('students').delete().eq('id', id);
     if (error) {
       console.error('Failed to delete student:', error);
-      alert('Failed to delete student.');
+      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to delete student.', type: 'error' });
     } else {
       navigate('/students');
     }
@@ -275,6 +278,13 @@ export function StudentDetailPage() {
             </div>
 
             <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Last Connected</span>
+              <span className={styles.metaValue}>
+                {getRelativeTime(student.updated_at)}
+              </span>
+            </div>
+
+            <div className={styles.metaItem}>
               <span className={styles.metaLabel}>Status</span>
               <span className={styles.metaValue}>
                 <Badge variant={student.status === 'active' ? 'success' : student.status === 'inactive' ? 'error' : 'warning'}>
@@ -360,8 +370,11 @@ export function StudentDetailPage() {
             </button>
           </div>
 
+          {/* Main Content Layout */}
+          <div className={styles.bottomGrid}>
+
           {/* Tab Content Card */}
-          <div className={styles.tabCard}>
+          <div className={styles.tabCard} style={{ marginBottom: 0 }}>
             {activeTab === 'enrolments' && (
               <>
                 <div className={styles.tabCardHeader}>
@@ -396,64 +409,6 @@ export function StudentDetailPage() {
               </div>
             )}
           </div>
-
-          {/* Bottom Grid: Detailed Info + Tasks */}
-          <div className={styles.bottomGrid}>
-
-            {/* Detailed Information (Jewellery CRM style) */}
-            <div className={`${styles.sectionCard} ${styles.sectionCardPurple}`}>
-              <div className={styles.sectionCardHeader}>
-                <h3 className={styles.sectionCardTitle}>
-                  <span className={styles.sectionCardTitleIcon}><User size={14} /></span>
-                  Detailed Information
-                </h3>
-                <div className={styles.sectionCardActions}>
-                  <button className={styles.sortBtn} onClick={() => setIsFormOpen(true)}><Edit2 size={13} /> Edit</button>
-                </div>
-              </div>
-              <div className={styles.sectionCardBody}>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>First Name</div>
-                    <div className={styles.fieldRowValue}>{student.first_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Last Name</div>
-                    <div className={styles.fieldRowValue}>{student.last_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Calendar size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Date of Birth</div>
-                    <div className={styles.fieldRowValue}>{student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-GB') : '-'}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><GraduationCap size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>School Year</div>
-                    <div className={styles.fieldRowValue}>{academicInfo.yearGroup}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><BookOpen size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Key Stage</div>
-                    <div className={styles.fieldRowValue}>{academicInfo.keyStage}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => setIsFormOpen(true)}><Pencil size={13} /></button>
-                </div>
-              </div>
-            </div>
 
             {/* Tasks & Notes Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
@@ -610,6 +565,13 @@ export function StudentDetailPage() {
         onConfirm={handleDeleteConfirm}
         title="Delete Student"
         message="Are you sure you want to delete this student? This action cannot be undone and will remove all associated data."
+      />
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
       />
     </div>
   );

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
@@ -22,6 +23,16 @@ export function LeadsListPage() {
   const [filters, setFilters] = useState({ source: '', status: '', enquiry_type: '', city: '', tag: '' });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [enquiriesCount, setEnquiriesCount] = useState({ total: 0, won: 0, lost: 0, open: 0 });
+  const [leadEnquiries, setLeadEnquiries] = useState<Record<string, any[]>>({});
+  const [enquiryPopover, setEnquiryPopover] = useState<{ leadId: string; x: number; y: number } | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleClose = () => {
+    closeTimeoutRef.current = setTimeout(() => setEnquiryPopover(null), 150);
+  };
+  const cancelClose = () => {
+    if (closeTimeoutRef.current) { clearTimeout(closeTimeoutRef.current); closeTimeoutRef.current = null; }
+  };
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -53,10 +64,11 @@ export function LeadsListPage() {
       })));
     }
 
-    // Also fetch enquiries stats
+    // Also fetch enquiries with details for per-lead display
     const { data: enqData } = await supabase
       .from('enquiries')
-      .select('status');
+      .select('id, lead_id, status, enquiry_type, students, created_at')
+      .order('created_at', { ascending: false });
       
     if (enqData) {
       const won = enqData.filter(e => e.status === 'won').length;
@@ -67,6 +79,16 @@ export function LeadsListPage() {
         lost,
         open: enqData.length - won - lost
       });
+
+      // Group enquiries by lead_id
+      const grouped: Record<string, any[]> = {};
+      enqData.forEach((enq: any) => {
+        if (enq.lead_id) {
+          if (!grouped[enq.lead_id]) grouped[enq.lead_id] = [];
+          grouped[enq.lead_id].push(enq);
+        }
+      });
+      setLeadEnquiries(grouped);
     }
 
     setLoading(false);
@@ -122,6 +144,10 @@ export function LeadsListPage() {
       aVal = (a.tags || []).join(', ').toLowerCase();
       bVal = (b.tags || []).join(', ').toLowerCase();
     }
+    if (key === 'enquiries') {
+      aVal = (leadEnquiries[a.id] || []).length;
+      bVal = (leadEnquiries[b.id] || []).length;
+    }
 
     if (!aVal && !bVal) return 0;
     if (!aVal) return direction === 'asc' ? 1 : -1;
@@ -158,6 +184,14 @@ export function LeadsListPage() {
 
   const handleRowClick = (id: string) => {
     navigate(`/leads/${id}`);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'won': return { color: '#10b981', bg: '#ecfdf5', label: 'Won' };
+      case 'lost': return { color: '#ef4444', bg: '#fef2f2', label: 'Lost' };
+      default: return { color: '#3b82f6', bg: '#eff6ff', label: 'Open' };
+    }
   };
 
   const totalLeads = leads.length;
@@ -294,15 +328,16 @@ export function LeadsListPage() {
                 <th onClick={() => handleSort('source')} className={styles.sortableHeader}>Source {renderSortIcon('source')}</th>
                 <th onClick={() => handleSort('city')} className={styles.sortableHeader}>Location {renderSortIcon('city')}</th>
                 <th onClick={() => handleSort('tags')} className={styles.sortableHeader}>Tags {renderSortIcon('tags')}</th>
+                <th onClick={() => handleSort('enquiries')} className={styles.sortableHeader}>Enquiries {renderSortIcon('enquiries')}</th>
                 <th onClick={() => handleSort('created_at')} className={styles.sortableHeader}>Date Added {renderSortIcon('created_at')}</th>
                 <th className={styles.actionsCol}></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-tertiary)' }}>Loading leads...</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-tertiary)' }}>Loading leads...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-tertiary)' }}>No leads found.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-tertiary)' }}>No leads found.</td></tr>
               ) : filtered.map((lead) => (
                 <tr key={lead.id} onClick={() => handleRowClick(lead.id)}>
                   <td>
@@ -336,6 +371,30 @@ export function LeadsListPage() {
                       </div>
                     ) : <span className={styles.mutedCell}>-</span>}
                   </td>
+                  <td>
+                    {(() => {
+                      const enqs = leadEnquiries[lead.id] || [];
+                      if (enqs.length === 0) return <span className={styles.mutedCell}>-</span>;
+                      return (
+                        <div
+                          className={styles.enquiryBadgeWrap}
+                          onMouseEnter={(e) => {
+                            e.stopPropagation();
+                            cancelClose();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setEnquiryPopover({ leadId: lead.id, x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+                          }}
+                          onMouseLeave={() => scheduleClose()}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className={styles.enquiryBadge}>
+                            <Briefcase size={12} />
+                            {enqs.length}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className={styles.mutedCell}>
                     {new Date(lead.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
@@ -358,6 +417,72 @@ export function LeadsListPage() {
           </div>
         </div>
       </div>
+
+      {/* Enquiry Tooltip Portal — rendered outside table to avoid overflow clipping */}
+      {enquiryPopover && (() => {
+        const enqs = leadEnquiries[enquiryPopover.leadId] || [];
+        if (enqs.length === 0) return null;
+        return createPortal(
+          <div
+            className={styles.enquiryTooltip}
+            style={{ left: enquiryPopover.x, top: enquiryPopover.y }}
+            onMouseEnter={() => cancelClose()}
+            onMouseLeave={() => scheduleClose()}
+          >
+            <div className={styles.enquiryTooltipHeader}>
+              {enqs.length} Enquir{enqs.length === 1 ? 'y' : 'ies'}
+            </div>
+            <div className={styles.enquiryTooltipBody}>
+              {enqs.map((enq: any) => {
+                const statusConf = getStatusColor(enq.status);
+                const studentList = enq.students && enq.students.length > 0
+                  ? enq.students.filter((s: any) => s.first_name)
+                  : [];
+                return (
+                  <div
+                    key={enq.id}
+                    className={styles.enquiryTooltipItem}
+                    style={{ borderLeftColor: statusConf.color }}
+                    onClick={() => {
+                      setEnquiryPopover(null);
+                      navigate(`/leads/${enquiryPopover.leadId}`, { state: { openEnquiryId: enq.id } });
+                    }}
+                  >
+                    <div className={styles.enquiryItemTop}>
+                      <span className={styles.enquiryStatusDot} style={{ background: statusConf.color }} />
+                      <span className={styles.enquiryStatusLabel} style={{ color: statusConf.color }}>
+                        {statusConf.label}
+                      </span>
+                      {enq.enquiry_type && (
+                        <span className={styles.enquiryTypePill}>{enq.enquiry_type}</span>
+                      )}
+                      <span className={styles.enquiryTooltipDate}>
+                        {new Date(enq.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    {studentList.length > 0 && (
+                      <div className={styles.enquiryStudentChips}>
+                        {studentList.map((s: any, i: number) => (
+                          <span key={i} className={styles.enquiryStudentChip}>
+                            {s.first_name}{s.year_group ? ` · ${s.year_group}` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div
+              className={styles.enquiryTooltipFooter}
+              onClick={() => navigate(`/leads/${enquiryPopover.leadId}`)}
+            >
+              View all enquiries →
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
 
       <LeadForm 
         isOpen={isFormOpen} 

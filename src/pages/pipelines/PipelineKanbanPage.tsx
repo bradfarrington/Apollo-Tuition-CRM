@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { PipelineSettingsModal } from './PipelineSettingsModal';
 import { ConvertConfirmModal } from '../../components/ui/ConvertConfirmModal';
 import { LostReasonModal } from '../../components/ui/LostReasonModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 import { useSubjects } from '../../contexts/SubjectsContext';
 import { convertEnquiryToStudentAndParent } from '../../lib/conversions';
 import styles from './PipelineKanbanPage.module.css';
@@ -96,6 +97,7 @@ export function PipelineKanbanPage() {
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [pendingConvertDrop, setPendingConvertDrop] = useState<{cardId: string, stageId: string} | null>(null);
   const [pendingLostDrop, setPendingLostDrop] = useState<{cardId: string, stageId: string} | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info'}>({ isOpen: false, title: '', message: '', type: 'info' });
 
   const { activeSubjects } = useSubjects();
 
@@ -293,7 +295,7 @@ export function PipelineKanbanPage() {
         }
       } catch (err) {
         console.error('Failed to convert from pipeline:', err);
-        alert('Failed to convert enquiry.');
+        setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to convert enquiry.', type: 'error' });
         setPendingConvertDrop(null);
         return; 
       }
@@ -625,6 +627,14 @@ export function PipelineKanbanPage() {
         isOpen={!!pendingLostDrop}
         onClose={() => setPendingLostDrop(null)}
         onConfirm={handleConfirmLost}
+      />
+      
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
       />
     </div>
   );

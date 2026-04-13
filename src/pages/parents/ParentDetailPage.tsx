@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getRelativeTime } from '../../lib/dateUtils';
 import { 
   Edit2, Plus, Trash2, PhoneCall, Mail, GraduationCap, 
   CreditCard, FileText, MoreVertical, 
@@ -13,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import type { Parent } from '../../types/parents';
 import { ParentForm } from './ParentForm';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 import { DocumentManager } from '../../components/documents/DocumentManager';
 import styles from './ParentDetailPage.module.css';
 
@@ -24,11 +26,26 @@ export function ParentDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [parent, setParent] = useState<Parent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info'}>({ isOpen: false, title: '', message: '', type: 'info' });
 
   const fetchParent = useCallback(async () => {
     if (!id) return;
     setLoading(true);
-    const { data, error } = await supabase.from('parents').select('*').eq('id', id).single();
+    const { data, error } = await supabase
+      .from('parents')
+      .select(`
+        *,
+        students(
+          id,
+          first_name,
+          last_name,
+          status,
+          school_year,
+          key_stage
+        )
+      `)
+      .eq('id', id)
+      .single();
     if (error) console.error('Failed to fetch parent:', error);
     else setParent(data);
     setLoading(false);
@@ -54,7 +71,7 @@ export function ParentDetailPage() {
     const { error } = await supabase.from('parents').delete().eq('id', id);
     if (error) {
       console.error('Failed to delete parent:', error);
-      alert('Failed to delete parent.');
+      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to delete parent.', type: 'error' });
     } else {
       navigate('/parents');
     }
@@ -153,6 +170,13 @@ export function ParentDetailPage() {
             </div>
 
             <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Last Connected</span>
+              <span className={styles.metaValue}>
+                {getRelativeTime(parent.updated_at)}
+              </span>
+            </div>
+
+            <div className={styles.metaItem}>
               <span className={styles.metaLabel}>Preferred Contact</span>
               <span className={styles.metaValue}>
                 <span className={styles.contactMethodBadge}>
@@ -160,7 +184,7 @@ export function ParentDetailPage() {
                   {parent.preferred_contact_method === 'phone' && <Phone size={11} />}
                   {parent.preferred_contact_method === 'whatsapp' && <MessageSquare size={11} />}
                   {parent.preferred_contact_method === 'sms' && <MessageSquare size={11} />}
-                  {parent.preferred_contact_method || '-'}
+                  {parent.preferred_contact_method ? parent.preferred_contact_method.charAt(0).toUpperCase() + parent.preferred_contact_method.slice(1) : '-'}
                 </span>
               </span>
             </div>
@@ -213,7 +237,7 @@ export function ParentDetailPage() {
             >
               <GraduationCap size={15} />
               Students
-              <span className={styles.tabCount}>0</span>
+              <span className={styles.tabCount}>{parent.students?.length || 0}</span>
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'invoices' ? styles.active : ''}`}
@@ -240,14 +264,17 @@ export function ParentDetailPage() {
             </button>
           </div>
 
+          {/* Main Layout Grid */}
+          <div className={styles.bottomGrid}>
+
           {/* Tab Content Card */}
-          <div className={styles.tabCard}>
+          <div className={styles.tabCard} style={{ marginBottom: 0 }}>
             {activeTab === 'students' && (
               <>
                 <div className={styles.tabCardHeader}>
                   <h3 className={styles.tabCardTitle}>
                     Students
-                    <span className={styles.tabCount}>0</span>
+                    <span className={styles.tabCount}>{parent.students?.length || 0}</span>
                   </h3>
                   <div className={styles.tabCardActions}>
                     <button className={styles.sortBtn}><ArrowUpDown size={13} /> Sort</button>
@@ -255,9 +282,38 @@ export function ParentDetailPage() {
                   </div>
                 </div>
                 <div className={styles.tabCardBody}>
-                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
-                    No linked students
-                  </div>
+                  {parent.students && parent.students.length > 0 ? (
+                    <div style={{ display: 'grid', gap: '16px', padding: '16px' }}>
+                      {parent.students.map(student => (
+                        <div key={student.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div className={styles.avatar} style={{ width: '32px', height: '32px', fontSize: '12px' }}>
+                              {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{student.first_name} {student.last_name}</div>
+                              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                {student.school_year || 'Year Unknown'}
+                                {student.key_stage && ` • ${student.key_stage}`}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <Badge variant={student.status === 'active' ? 'success' : student.status === 'inactive' ? 'error' : 'neutral'}>
+                              {student.status?.charAt(0).toUpperCase() + student.status?.slice(1)}
+                            </Badge>
+                            <Button variant="secondary" size="sm" onClick={() => navigate(`/students/${student.id}`)}>
+                              View Student
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                      No linked students
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -298,91 +354,6 @@ export function ParentDetailPage() {
               </div>
             )}
           </div>
-
-          {/* Bottom Grid: Detailed Info + Tasks */}
-          <div className={styles.bottomGrid}>
-
-            {/* Detailed Information (Jewellery CRM style) */}
-            <div className={`${styles.sectionCard} ${styles.sectionCardPurple}`}>
-              <div className={styles.sectionCardHeader}>
-                <h3 className={styles.sectionCardTitle}>
-                  <span className={styles.sectionCardTitleIcon}><User size={14} /></span>
-                  Detailed Information
-                </h3>
-                <div className={styles.sectionCardActions}>
-                  <button className={styles.sortBtn}><Edit2 size={13} /> Edit</button>
-                  <button className={styles.sortBtn}><Plus size={13} /></button>
-                </div>
-              </div>
-              <div className={styles.sectionCardBody}>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>First Name</div>
-                    <div className={styles.fieldRowValue}>{parent.first_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Last Name</div>
-                    <div className={styles.fieldRowValue}>{parent.last_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Mail size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Email</div>
-                    <div className={styles.fieldRowValue}>
-                      <a href={`mailto:${parent.email}`}>{parent.email}</a>
-                    </div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Phone size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Phone Number</div>
-                    <div className={styles.fieldRowValue}>
-                      <a href={`tel:${parent.phone}`}>{parent.phone}</a>
-                    </div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><MapPin size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Address</div>
-                    <div className={styles.fieldRowValue}>{fullAddress || '-'}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Clock size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Last Connected</div>
-                    <div className={styles.fieldRowValue}>
-                      {new Date(parent.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} at {new Date(parent.updated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-
-                {/* Custom Fields */}
-                {parent.custom_fields && Object.entries(parent.custom_fields).map(([key, val]) => (
-                  <div className={styles.fieldRow} key={key}>
-                    <div className={styles.fieldRowIcon}><FileText size={14} /></div>
-                    <div className={styles.fieldRowContent}>
-                      <div className={styles.fieldRowLabel}>{key.replace(/_/g, ' ')}</div>
-                      <div className={styles.fieldRowValue}>{val?.toString()}</div>
-                    </div>
-                    <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Tasks & Notes Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
@@ -439,6 +410,13 @@ export function ParentDetailPage() {
         onConfirm={handleDeleteConfirm}
         title="Delete Parent"
         message="Are you sure you want to delete this parent? This action cannot be undone and will remove all associated data."
+      />
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
       />
     </div>
   );

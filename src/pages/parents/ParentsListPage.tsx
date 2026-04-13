@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
@@ -19,18 +20,55 @@ export function ParentsListPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [studentPopover, setStudentPopover] = useState<{ parentId: string; x: number; y: number } | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleClose = () => {
+    closeTimeoutRef.current = setTimeout(() => setStudentPopover(null), 150);
+  };
+  const cancelClose = () => {
+    if (closeTimeoutRef.current) { clearTimeout(closeTimeoutRef.current); closeTimeoutRef.current = null; }
+  };
 
   const fetchParents = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('parents')
-      .select('*')
+      .select(`
+        *,
+        students (
+          id,
+          first_name,
+          last_name,
+          status,
+          school_year,
+          enrolments (
+            id,
+            status
+          )
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Failed to fetch parents:', error);
     } else {
-      setParents(data || []);
+      const enrichedParents = (data || []).map((parent: any) => {
+        const students = parent.students || [];
+        let enrolmentsCount = 0;
+        
+        students.forEach((stu: any) => {
+          const activeEnrolments = (stu.enrolments || []).filter((e: any) => e.status === 'active').length;
+          enrolmentsCount += activeEnrolments;
+        });
+
+        return {
+          ...parent,
+          linked_students_count: students.length,
+          active_enrolments_count: enrolmentsCount
+        };
+      });
+      setParents(enrichedParents);
     }
     setLoading(false);
   };
@@ -163,7 +201,30 @@ export function ParentsListPage() {
                         </div>
                       </div>
                     </td>
-                    <td className={styles.numericCell}>{parent.linked_students_count}</td>
+                    <td>
+                      {(() => {
+                        const students = parent.students || [];
+                        if (students.length === 0) return <span className={styles.mutedCell}>-</span>;
+                        return (
+                          <div
+                            className={styles.studentBadgeWrap}
+                            onMouseEnter={(e) => {
+                              e.stopPropagation();
+                              cancelClose();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setStudentPopover({ parentId: parent.id, x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+                            }}
+                            onMouseLeave={() => scheduleClose()}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className={styles.studentBadge}>
+                              <GraduationCap size={12} />
+                              {parent.linked_students_count}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className={styles.numericCell}>{parent.active_enrolments_count}</td>
                     <td>
                       <Badge variant={parent.status === 'active' ? 'success' : parent.status === 'inactive' ? 'error' : 'neutral'}>
@@ -193,6 +254,56 @@ export function ParentsListPage() {
           </div>
         </div>
       </div>
+
+      {/* Student Tooltip Portal */}
+      {studentPopover && (() => {
+        const parent = parents.find(p => p.id === studentPopover.parentId);
+        const students = parent?.students || [];
+        if (students.length === 0) return null;
+        return createPortal(
+          <div
+            className={styles.studentTooltip}
+            style={{ left: studentPopover.x, top: studentPopover.y }}
+            onMouseEnter={() => cancelClose()}
+            onMouseLeave={() => scheduleClose()}
+          >
+            <div className={styles.studentTooltipHeader}>
+              {students.length} Student{students.length === 1 ? '' : 's'}
+            </div>
+            <div className={styles.studentTooltipBody}>
+              {students.map((stu: any) => {
+                const statusColor = stu.status === 'active' ? '#10b981' : stu.status === 'inactive' ? '#ef4444' : '#3b82f6';
+                const statusLabel = stu.status ? stu.status.charAt(0).toUpperCase() + stu.status.slice(1) : 'Unknown';
+                return (
+                  <div
+                    key={stu.id}
+                    className={styles.studentTooltipItem}
+                    style={{ borderLeftColor: statusColor }}
+                    onClick={() => {
+                      setStudentPopover(null);
+                      navigate(`/students/${stu.id}`);
+                    }}
+                  >
+                    <div className={styles.studentItemTop}>
+                      <span className={styles.studentStatusDot} style={{ background: statusColor }} />
+                      <span className={styles.studentStatusLabel} style={{ color: statusColor }}>
+                        {statusLabel}
+                      </span>
+                      {stu.school_year && (
+                        <span className={styles.studentTypePill}>{stu.school_year}</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                      {stu.first_name} {stu.last_name}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
 
       <ParentForm 
         isOpen={isFormOpen} 

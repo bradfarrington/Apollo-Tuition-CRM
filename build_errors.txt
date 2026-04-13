@@ -1,0 +1,28 @@
+
+> apollo-tuition-crm@0.0.0 build
+> tsc -b && vite build
+
+src/components/tasks/TaskFormModal.tsx(138,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/pages/Dashboard.tsx(15,23): error TS7031: Binding element 'title' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(15,30): error TS7031: Binding element 'count' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(15,37): error TS7031: Binding element 'accentClass' implicitly has an 'any' type.
+src/pages/Dashboard.tsx(15,56): error TS7031: Binding element 'Icon' implicitly has an 'any' type.
+src/pages/parents/ParentDetailPage.tsx(9,38): error TS6133: 'User' is declared but its value is never read.
+src/pages/parents/ParentDetailPage.tsx(9,44): error TS6133: 'Pencil' is declared but its value is never read.
+src/pages/parents/ParentDetailPage.tsx(10,3): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/parents/ParentForm.tsx(5,26): error TS6133: 'User' is declared but its value is never read.
+src/pages/parents/ParentForm.tsx(5,40): error TS6133: 'Phone' is declared but its value is never read.
+src/pages/parents/ParentForm.tsx(357,70): error TS2322: Type 'boolean | "" | undefined' is not assignable to type 'boolean | undefined'.
+  Type '""' is not assignable to type 'boolean | undefined'.
+src/pages/students/StudentDetailPage.tsx(6,27): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(1,13): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(1,26): error TS6133: 'User' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(1,32): error TS6133: 'BookOpen' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(1,42): error TS6133: 'List' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(1,48): error TS6133: 'Target' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(1,56): error TS6133: 'Users' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(164,10): error TS6133: 'expandedSections' is declared but its value is never read.
+src/pages/students/StudentForm.tsx(164,28): error TS6133: 'setExpandedSections' is declared but its value is never read.
+src/pages/tutors/TutorDetailPage.tsx(7,17): error TS6133: 'User' is declared but its value is never read.
+src/pages/tutors/TutorDetailPage.tsx(7,23): error TS6133: 'Pencil' is declared but its value is never read.

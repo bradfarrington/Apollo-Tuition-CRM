@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { getRelativeTime } from '../../lib/dateUtils';
 import { 
   ChevronRight, Edit2, ArrowRightCircle, Trash2, 
   MessageSquare, PhoneCall, Mail, CheckCircle2,
@@ -16,6 +17,7 @@ import type { Task } from '../../types/tasks';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
 import { ReinstateModal } from '../../components/ui/ReinstateModal';
 import { ViewReasonModal } from '../../components/ui/ViewReasonModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 import { DocumentManager } from '../../components/documents/DocumentManager';
 import { useSubjects } from '../../contexts/SubjectsContext';
 import { convertEnquiryToStudentAndParent } from '../../lib/conversions';
@@ -47,6 +49,7 @@ export function LeadDetailPage() {
   
   const [pendingReinstateEnquiryId, setPendingReinstateEnquiryId] = useState<string | null>(null);
   const [viewingReason, setViewingReason] = useState<string | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info'}>({ isOpen: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     supabase.from('crm_tags').select('name, color').order('name').then(({ data }) => {
@@ -208,11 +211,11 @@ export function LeadDetailPage() {
       
       // Update Pipeline Card to move to the last stage (optional, depending on business logic)
       
-      alert('Enquiry successfully converted!');
+      setAlertConfig({ isOpen: true, title: 'Success', message: 'Enquiry successfully converted!', type: 'success' });
       fetchLead(); // refresh
     } catch (err) {
       console.error(err);
-      alert('Failed to convert enquiry.');
+      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to convert enquiry.', type: 'error' });
     }
   };
 
@@ -242,11 +245,11 @@ export function LeadDetailPage() {
           await supabase.from('leads').update({ status: 'open' }).eq('id', lead.id);
        }
        
-       alert('Enquiry reinstated and is back in the active pipeline!');
+       setAlertConfig({ isOpen: true, title: 'Success', message: 'Enquiry reinstated and is back in the active pipeline!', type: 'success' });
        fetchLead(); // refresh view
      } catch (err) {
        console.error('Failed to reinstate:', err);
-       alert('Failed to reinstate enquiry.');
+       setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to reinstate enquiry.', type: 'error' });
      } finally {
        setPendingReinstateEnquiryId(null);
      }
@@ -265,7 +268,7 @@ export function LeadDetailPage() {
     const { error } = await supabase.from('leads').delete().eq('id', id);
     if (error) {
       console.error('Failed to delete lead:', error);
-      alert('Failed to delete lead.');
+      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to delete lead.', type: 'error' });
     } else {
       navigate('/leads');
     }
@@ -365,6 +368,13 @@ export function LeadDetailPage() {
               <span className={styles.metaLabel}>Date Added</span>
               <span className={styles.metaValue}>
                 {new Date(lead.created_at).toLocaleDateString('en-GB')}
+              </span>
+            </div>
+
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Last Connected</span>
+              <span className={styles.metaValue}>
+                {getRelativeTime(lead.updated_at)}
               </span>
             </div>
 
@@ -509,8 +519,11 @@ export function LeadDetailPage() {
             </div>
           </div>
 
+          {/* Main Layout Grid */}
+          <div className={styles.bottomGrid}>
+
           {/* Tab Content Card */}
-          <div className={styles.tabCard}>
+          <div className={styles.tabCard} style={{ marginBottom: 0 }}>
             {activeTab === 'enquiries' && (
               <div className={styles.tabCardBody} style={{ padding: 'var(--spacing-6)' }}>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
@@ -648,51 +661,6 @@ export function LeadDetailPage() {
             )}
           </div>
 
-          {/* Bottom Grid: Detailed Info + Tasks */}
-          <div className={styles.bottomGrid}>
-
-            {/* Detailed Information */}
-            <div className={`${styles.sectionCard} ${styles.sectionCardBlue}`}>
-              <div className={styles.sectionCardHeader}>
-                <h3 className={styles.sectionCardTitle}>
-                  <span className={styles.sectionCardTitleIcon}><User size={14} /></span>
-                  Detailed Information
-                </h3>
-                <div className={styles.sectionCardActions}>
-                  <button className={styles.sortBtn} onClick={() => { setFormMode('edit_contact'); setIsFormOpen(true); }}><Edit2 size={13} /> Edit</button>
-                </div>
-              </div>
-              <div className={styles.sectionCardBody}>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Contact Name</div>
-                    <div className={styles.fieldRowValue}>{lead.parent_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => { setFormMode('edit_contact'); setIsFormOpen(true); }}><Pencil size={13} /></button>
-                </div>
-
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Calendar size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Enquiry Type</div>
-                    <div className={styles.fieldRowValue}>{lead.enquiry_type || '-'}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit} onClick={() => { setFormMode('edit_contact'); setIsFormOpen(true); }}><Pencil size={13} /></button>
-                </div>
-                
-                {lead.message && (
-                  <div className={styles.fieldRow} style={{ alignItems: 'flex-start' }}>
-                    <div className={styles.fieldRowIcon}><MessageSquare size={14} /></div>
-                    <div className={styles.fieldRowContent}>
-                      <div className={styles.fieldRowLabel}>Initial Message</div>
-                      <div className={styles.fieldRowValue} style={{ marginTop: '4px', whiteSpace: 'pre-wrap', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{lead.message}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Tasks & Notes Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
 
@@ -820,6 +788,13 @@ export function LeadDetailPage() {
         isOpen={!!viewingReason}
         onClose={() => setViewingReason(null)}
         reason={viewingReason || ''}
+      />
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
       />
     </div>
   );

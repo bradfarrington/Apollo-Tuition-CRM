@@ -11,6 +11,7 @@ import { Badge } from '../../components/ui/Badge';
 import type { Tutor } from '../../types/tutors';
 import { TutorForm } from './TutorForm';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 import styles from './TutorDetailPage.module.css';
 
 export function TutorDetailPage() {
@@ -21,6 +22,7 @@ export function TutorDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [tutor, setTutor] = useState<Tutor | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info'}>({ isOpen: false, title: '', message: '', type: 'info' });
 
   // Mock related data for now
   const mockStudents: any[] = [];
@@ -57,7 +59,7 @@ export function TutorDetailPage() {
     const { error } = await supabase.from('tutors').delete().eq('id', id);
     if (error) {
       console.error('Failed to delete tutor:', error);
-      alert('Failed to delete tutor.');
+      setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to delete tutor.', type: 'error' });
     } else {
       navigate('/tutors');
     }
@@ -221,8 +223,11 @@ export function TutorDetailPage() {
             </button>
           </div>
 
+          {/* Main Layout Grid */}
+          <div className={styles.bottomGrid}>
+
           {/* Tab Content Card */}
-          <div className={styles.tabCard}>
+          <div className={styles.tabCard} style={{ marginBottom: 0 }}>
             {activeTab === 'students' && (
               <>
                 <div className={styles.tabCardHeader}>
@@ -319,66 +324,6 @@ export function TutorDetailPage() {
             )}
           </div>
 
-          {/* Bottom Grid: Detailed Info + Tasks */}
-          <div className={styles.bottomGrid}>
-
-            {/* Detailed Information (Jewellery CRM style) */}
-            <div className={`${styles.sectionCard} ${styles.sectionCardPurple}`}>
-              <div className={styles.sectionCardHeader}>
-                <h3 className={styles.sectionCardTitle}>
-                  <span className={styles.sectionCardTitleIcon}><User size={14} /></span>
-                  Detailed Information
-                </h3>
-                <div className={styles.sectionCardActions}>
-                  <button className={styles.sortBtn}><Edit2 size={13} /> Edit</button>
-                </div>
-              </div>
-              <div className={styles.sectionCardBody}>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>First Name</div>
-                    <div className={styles.fieldRowValue}>{tutor.first_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><User size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Last Name</div>
-                    <div className={styles.fieldRowValue}>{tutor.last_name}</div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Mail size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Email</div>
-                    <div className={styles.fieldRowValue}><a href={`mailto:${tutor.email}`}>{tutor.email}</a></div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><Phone size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Phone Number</div>
-                    <div className={styles.fieldRowValue}><a href={`tel:${tutor.phone}`}>{tutor.phone}</a></div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldRowIcon}><MapPin size={14} /></div>
-                  <div className={styles.fieldRowContent}>
-                    <div className={styles.fieldRowLabel}>Address</div>
-                    <div className={styles.fieldRowValue}>
-                      {tutor.address_line_1}, {tutor.city}, {tutor.postal_code}
-                    </div>
-                  </div>
-                  <button className={styles.fieldRowEdit}><Pencil size={13} /></button>
-                </div>
-              </div>
-            </div>
-
             {/* Tasks & Notes Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
 
@@ -441,6 +386,13 @@ export function TutorDetailPage() {
         onConfirm={handleDeleteConfirm}
         title="Delete Tutor"
         message="Are you sure you want to delete this tutor? This action cannot be undone and will remove all associated data."
+      />
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
       />
     </div>
   );
