@@ -27,7 +27,7 @@ export function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'enquiries' | 'timeline' | 'communications' | 'documents'>('enquiries');
+  const [activeTab, setActiveTab] = useState<'enquiries' | 'timeline' | 'communications' | 'documents' | 'tasks'>('enquiries');
   const [lead, setLead] = useState<Lead | null>(null);
   const [enquiries, setEnquiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -506,6 +506,14 @@ export function LeadDetailPage() {
               <FileText size={15} />
               Documents
             </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'tasks' ? styles.active : ''}`}
+              onClick={() => setActiveTab('tasks')}
+            >
+              <CheckCircle2 size={15} />
+              Tasks
+              {tasks.length > 0 && <span className={styles.tabCount}>{tasks.length}</span>}
+            </button>
             </div>
 
             <div className={styles.panelActions} style={{ paddingBottom: '8px' }}>
@@ -659,26 +667,24 @@ export function LeadDetailPage() {
                 <DocumentManager entityType="lead" entityId={lead.id} />
               </div>
             )}
-          </div>
 
-            {/* Tasks & Notes Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
-
-              {/* Tasks */}
-              <div className={`${styles.sectionCard} ${styles.sectionCardGreen}`}>
-                <div className={styles.sectionCardHeader}>
-                  <h3 className={styles.sectionCardTitle}>
-                    <span className={styles.sectionCardTitleIcon}><CheckCircle2 size={14} /></span>
-                    Tasks {tasks.length > 0 && `(${tasks.length})`}
+            {activeTab === 'tasks' && (
+              <>
+                <div className={styles.tabCardHeader}>
+                  <h3 className={styles.tabCardTitle}>
+                    Tasks
+                    <span className={styles.tabCount}>{tasks.length}</span>
                   </h3>
-                  <Button variant="secondary" size="sm" onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}>
-                    <Plus size={14} />
-                    Add
-                  </Button>
+                  <div className={styles.tabCardActions}>
+                    <Button variant="secondary" size="sm" onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}>
+                      <Plus size={14} />
+                      Add Task
+                    </Button>
+                  </div>
                 </div>
-                <div className={styles.sectionCardBody}>
+                <div className={styles.tabCardBody}>
                   {tasks.length === 0 ? (
-                    <div style={{ padding: '16px 20px', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
                       No tasks
                     </div>
                   ) : (
@@ -746,11 +752,12 @@ export function LeadDetailPage() {
                     </div>
                   )}
                 </div>
-              </div>
-              
-            </div>
+              </>
+            )}
+
           </div>
         </div>
+      </div>
       </div>
 
       {/* Edit Form Modal */}

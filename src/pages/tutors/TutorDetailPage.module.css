@@ -694,10 +694,9 @@
 
 /* ---- Bottom Grid (Details + Tasks/Actions sidebar) ---- */
 .bottomGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-6);
-  align-items: start;
 }
 
 /* ---- Section Card (About Me / Notes) ---- */

@@ -188,19 +188,22 @@ export function DocumentManager({ entityType, entityId }: DocumentManagerProps) 
 
   const handleDownload = async (doc: Document) => {
     try {
+      // Use direct download into a blob to bypass cross-origin browser download restrictions
       const { data, error } = await supabase.storage
         .from('documents')
-        .createSignedUrl(doc.file_url, 60); // 60 seconds expiry
+        .download(doc.file_url);
         
       if (error) throw error;
       
-      if (data && data.signedUrl) {
-        // Create an invisible link to trigger download
+      if (data) {
+        // Create a local blob URL to force the browser to trigger a real download
+        const url = window.URL.createObjectURL(data);
         const a = document.createElement('a');
-        a.href = data.signedUrl;
+        a.href = url;
         a.download = doc.name;
         document.body.appendChild(a);
         a.click();
+        window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
     } catch (err) {
@@ -255,13 +258,13 @@ export function DocumentManager({ entityType, entityId }: DocumentManagerProps) 
           </h3>
           <div className={styles.headerActions}>
             <Button variant="secondary" size="sm" onClick={() => setIsDragModalOpen(!isDragModalOpen)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className={styles.buttonContent}>
                 <MousePointer2 size={14} />
                 <span>Drag Add</span>
               </div>
             </Button>
             <Button variant="primary" size="sm" onClick={() => fileInputRef.current?.click()}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className={styles.buttonContent}>
                 {uploading ? <Loader2 className={styles.spinner} size={14} /> : <Plus size={14} />}
                 <span>{uploading ? 'Uploading...' : 'Upload Files'}</span>
               </div>

@@ -7,12 +7,14 @@ import {
   CreditCard, FileText, MoreVertical, 
   MessageSquare, Phone, Copy, MapPin,
   ChevronRight, ArrowUpDown, Filter, User, Pencil,
-  Clock, CheckCircle2
+  Clock, CheckCircle2, Calendar, AlertCircle
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import type { Parent } from '../../types/parents';
+import type { Task } from '../../types/tasks';
 import { ParentForm } from './ParentForm';
+import { TaskFormModal } from '../../components/tasks/TaskFormModal';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { DocumentManager } from '../../components/documents/DocumentManager';
@@ -21,12 +23,15 @@ import styles from './ParentDetailPage.module.css';
 export function ParentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'students' | 'invoices' | 'contracts' | 'communications'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'invoices' | 'contracts' | 'communications' | 'tasks' | 'notes'>('students');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [parent, setParent] = useState<Parent | null>(null);
   const [loading, setLoading] = useState(true);
   const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info'}>({ isOpen: false, title: '', message: '', type: 'info' });
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
   const fetchParent = useCallback(async () => {
     if (!id) return;
@@ -48,6 +53,20 @@ export function ParentDetailPage() {
       .single();
     if (error) console.error('Failed to fetch parent:', error);
     else setParent(data);
+
+    // Fetch Tasks
+    const { data: taskData } = await supabase
+      .from('tasks')
+      .select(`
+        *, 
+        task_stages(name, color),
+        assignee:profiles!tasks_assigned_to_fkey(full_name)
+      `)
+      .eq('related_type', 'parent')
+      .eq('related_id', id)
+      .order('created_at', { ascending: false });
+    setTasks(taskData || []);
+
     setLoading(false);
   }, [id]);
 
@@ -262,6 +281,21 @@ export function ParentDetailPage() {
               <MessageSquare size={15} />
               Communications
             </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'tasks' ? styles.active : ''}`}
+              onClick={() => setActiveTab('tasks')}
+            >
+              <CheckCircle2 size={15} />
+              Tasks
+              {tasks.length > 0 && <span className={styles.tabCount}>{tasks.length}</span>}
+            </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'notes' ? styles.active : ''}`}
+              onClick={() => setActiveTab('notes')}
+            >
+              <FileText size={15} />
+              Notes
+            </button>
           </div>
 
           {/* Main Layout Grid */}
@@ -276,10 +310,6 @@ export function ParentDetailPage() {
                     Students
                     <span className={styles.tabCount}>{parent.students?.length || 0}</span>
                   </h3>
-                  <div className={styles.tabCardActions}>
-                    <button className={styles.sortBtn}><ArrowUpDown size={13} /> Sort</button>
-                    <button className={styles.filterBtn}><Filter size={13} /> Filters</button>
-                  </div>
                 </div>
                 <div className={styles.tabCardBody}>
                   {parent.students && parent.students.length > 0 ? (
@@ -353,50 +383,120 @@ export function ParentDetailPage() {
                 <p className={styles.emptyStateHint}>Emails, calls, and messages will appear here</p>
               </div>
             )}
-          </div>
 
-            {/* Tasks & Notes Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
-
-              {/* Notes */}
-              {parent.notes && (
-                <div className={`${styles.sectionCard} ${styles.sectionCardPink}`}>
-                  <div className={styles.sectionCardHeader}>
-                    <h3 className={styles.sectionCardTitle}>
-                      <span className={styles.sectionCardTitleIcon}><FileText size={14} /></span>
-                      Notes
-                    </h3>
-                    <button className={styles.sortBtn}><Edit2 size={13} /> Edit</button>
-                  </div>
-                  <div className={styles.sectionCardBody}>
-                    <div className={styles.notesBox}>
-                      {parent.notes}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tasks */}
-              <div className={`${styles.sectionCard} ${styles.sectionCardGreen}`}>
-                <div className={styles.sectionCardHeader}>
-                  <h3 className={styles.sectionCardTitle}>
-                    <span className={styles.sectionCardTitleIcon}><CheckCircle2 size={14} /></span>
-                    Tasks
+            {activeTab === 'notes' && (
+              <>
+                <div className={styles.tabCardHeader}>
+                  <h3 className={styles.tabCardTitle}>
+                    Notes
                   </h3>
-                  <Button variant="secondary" size="sm">
-                    <Plus size={14} />
-                    Add
-                  </Button>
-                </div>
-                <div className={styles.sectionCardBody}>
-                  <div style={{ padding: '16px 20px', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
-                    No tasks
+                  <div className={styles.tabCardActions}>
+                    <button className={styles.filterBtn} onClick={() => setIsFormOpen(true)}><Edit2 size={13} /> Edit Parent</button>
                   </div>
                 </div>
-              </div>
-            </div>
+                <div className={styles.tabCardBody}>
+                  {parent.notes ? (
+                    <div style={{ padding: '24px' }}>
+                      <div className={styles.notesBox} style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--color-text-secondary)', fontSize: '0.95rem' }}>
+                        {parent.notes}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                      No notes recorded.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeTab === 'tasks' && (
+              <>
+                <div className={styles.tabCardHeader}>
+                  <h3 className={styles.tabCardTitle}>
+                    Tasks
+                    <span className={styles.tabCount}>{tasks.length}</span>
+                  </h3>
+                  <div className={styles.tabCardActions}>
+                    <Button variant="secondary" size="sm" onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}>
+                      <Plus size={14} />
+                      Add Task
+                    </Button>
+                  </div>
+                </div>
+                <div className={styles.tabCardBody}>
+                  {tasks.length === 0 ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+                      No tasks
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {tasks.map(task => {
+                        const priorityColors: Record<string, { color: string, bg: string, label: string }> = {
+                          urgent: { color: '#dc2626', bg: '#fef2f2', label: 'Urgent' },
+                          high: { color: '#ea580c', bg: '#fff7ed', label: 'High' },
+                          medium: { color: '#2563eb', bg: '#eff6ff', label: 'Medium' },
+                          low: { color: '#16a34a', bg: '#f0fdf4', label: 'Low' }
+                        };
+                        const pConf = task.priority ? (priorityColors[task.priority] || priorityColors.medium) : null;
+                        return (
+                          <div 
+                            key={task.id} 
+                            style={{ padding: '16px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer', transition: 'background-color 0.15s ease' }} 
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-bg-subtle)'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            onClick={() => { setEditingTask(task); setIsTaskModalOpen(true); }}
+                          >
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+                              <div style={{ marginTop: '2px', color: task.task_stages?.color || 'var(--color-text-tertiary)', flexShrink: 0 }}>
+                                <CheckCircle2 size={18} />
+                              </div>
+                              <div style={{ minWidth: 0, paddingRight: '16px' }}>
+                                <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: task.description ? '4px' : '0' }}>{task.title}</div>
+                                {task.description && (
+                                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
+                                    {task.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
+                              {task.task_stages && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: task.task_stages.color || 'var(--color-text-secondary)', background: task.task_stages.color ? `${task.task_stages.color}1A` : 'var(--color-bg-base)', padding: '2px 8px', borderRadius: '12px' }}>
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: task.task_stages.color || 'var(--color-text-tertiary)' }} />
+                                  {task.task_stages.name}
+                                </div>
+                              )}
+                              {task.due_date && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#0d9488', background: '#ccfbf1', padding: '2px 8px', borderRadius: '12px' }}>
+                                  <Calendar size={11} />
+                                  {new Date(task.due_date).toLocaleDateString()}
+                                </div>
+                              )}
+                              {task.assignee?.full_name && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#6366f1', background: '#e0e7ff', padding: '2px 8px', borderRadius: '12px' }}>
+                                  <User size={11} />
+                                  {task.assignee.full_name}
+                                </div>
+                              )}
+                              {pConf && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: pConf.color, background: pConf.bg, padding: '2px 8px', borderRadius: '12px' }}>
+                                  {task.priority === 'urgent' && <AlertCircle size={10} />}
+                                  {pConf.label}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
+      </div>
       </div>
 
       <ParentForm 
@@ -410,6 +510,14 @@ export function ParentDetailPage() {
         onConfirm={handleDeleteConfirm}
         title="Delete Parent"
         message="Are you sure you want to delete this parent? This action cannot be undone and will remove all associated data."
+      />
+      <TaskFormModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onUpdate={() => fetchParent()}
+        task={editingTask}
+        prefilledRelatedType="parent"
+        prefilledRelatedId={parent.id}
       />
       <AlertModal
         isOpen={alertConfig.isOpen}

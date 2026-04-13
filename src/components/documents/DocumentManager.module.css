@@ -123,12 +123,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
 }
 
 .headerActions {
   display: flex;
   align-items: center;
   gap: var(--spacing-3);
+}
+
+.buttonContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .headerActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .headerActions > button {
+    width: 100%;
+  }
 }
 
 .listTitle {
